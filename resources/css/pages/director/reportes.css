@@ -1,0 +1,12 @@
+/* Especifico de director/reportes. Prefijo obligatorio: .dir-reportes-* */
+.dir-reportes-form {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.dir-reportes-form .form-group {
+    margin-bottom: 0;
+    min-width: 220px;
+}

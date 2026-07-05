@@ -1,0 +1,53 @@
+/* Cascaron de las pantallas de autenticacion (layouts/guest.blade.php).
+   Layout de 2 paneles: visual (izquierda, oculto en pantallas pequenas)
+   y formulario (derecha, scrollable). Usado por login/verificar/registro. */
+.auth-shell {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    overflow: hidden;
+}
+
+.auth-panel-visual {
+    width: 55%;
+    flex-shrink: 0;
+    position: relative;
+    display: none;
+}
+
+.auth-panel-form {
+    flex: 1;
+    background: var(--white);
+    overflow-y: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px;
+}
+
+@media (min-width: 1024px) {
+    .auth-panel-visual {
+        display: block;
+    }
+
+    .auth-panel-form {
+        border-left: 1px solid rgba(11, 28, 58, .07);
+        box-shadow: -16px 0 48px rgba(11, 28, 58, .10);
+    }
+}
+
+.auth-form-wrap {
+    width: 100%;
+    max-width: 400px;
+    animation: fadeUp .55s ease both;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(22px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInStep {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}

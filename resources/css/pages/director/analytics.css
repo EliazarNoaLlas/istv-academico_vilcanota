@@ -1,0 +1,17 @@
+/* Especifico de director/analytics. Prefijo obligatorio: .dir-analytics-* */
+.dir-analytics-matrix {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .dir-analytics-matrix {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dir-analytics-chart-box {
+    height: 300px;
+    position: relative;
+}

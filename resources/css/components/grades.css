@@ -1,0 +1,15 @@
+/* Extraido de css/style.css (.nota-circle). */
+.c-nota-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.c-nota-ap { background: rgba(26, 191, 160, .15); color: var(--teal-dark); }
+.c-nota-med { background: rgba(201, 146, 42, .15); color: var(--gold); }
+.c-nota-des { background: rgba(224, 80, 80, .15); color: var(--red-alert); }

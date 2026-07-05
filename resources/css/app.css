@@ -1,0 +1,48 @@
+/*
+ * Punto de entrada unico de estilos. El orden importa: tokens -> base ->
+ * componentes -> overrides de rol -> overrides de pagina. Nunca agregar
+ * reglas sueltas aqui directamente; cada regla va en el archivo que le
+ * corresponde segun esta jerarquia.
+ */
+
+/* Tokens (compartidos: colores, tipografia, espaciado, sombras) */
+@import 'tokens/colors.css';
+@import 'tokens/spacing.css';
+@import 'tokens/typography.css';
+@import 'tokens/shadows.css';
+
+/* Base (estructura compartida: reset, layout autenticado, pantalla guest, forms) */
+@import 'base/reset.css';
+@import 'base/layout.css';
+@import 'base/guest.css';
+@import 'base/forms.css';
+
+/* Componentes reutilizables (prefijo c-, controlado) */
+@import 'components/buttons.css';
+@import 'components/cards.css';
+@import 'components/badges.css';
+@import 'components/tables.css';
+@import 'components/panels.css';
+@import 'components/avatar.css';
+@import 'components/grades.css';
+@import 'components/tabs.css';
+@import 'components/alerts.css';
+
+/* Overrides por rol (prefijo coord-/doc-/dir-/jua-) */
+@import 'roles/coordinador.css';
+@import 'roles/docente.css';
+@import 'roles/director.css';
+@import 'roles/jua.css';
+
+/* Overrides por pagina especifica */
+@import 'pages/auth/auth.css';
+@import 'pages/coordinador/dashboard.css';
+@import 'pages/coordinador/cursos.css';
+@import 'pages/coordinador/horarios.css';
+@import 'pages/coordinador/portafolio.css';
+@import 'pages/docente/dashboard.css';
+@import 'pages/director/dashboard.css';
+@import 'pages/director/usuarios.css';
+@import 'pages/director/analytics.css';
+@import 'pages/director/reportes.css';
+@import 'pages/jua/dashboard.css';

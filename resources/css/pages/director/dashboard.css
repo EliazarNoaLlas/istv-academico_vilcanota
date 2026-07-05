@@ -1,0 +1,47 @@
+/* Ajustes propios del dashboard de director. Prefijo .dir-dashboard-* */
+.dir-dashboard-kpis {
+    margin-bottom: 24px;
+}
+
+.dir-donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.dir-donut {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.dir-donut svg {
+    transform: rotate(-90deg);
+}
+
+.dir-donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.dir-donut-center strong {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--navy);
+    line-height: 1;
+}
+
+.dir-donut-center small {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.dir-donut-legend {
+    flex: 1;
+    min-width: 160px;
+}

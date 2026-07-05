@@ -1,0 +1,58 @@
+/*
+ * Botones base compartidos. Prefijo c- a proposito: un ".btn" global
+ * es justo la clase generica que puede filtrarse y romper un modulo
+ * ajeno sin que nadie lo note.
+ */
+.c-btn {
+    padding: 9px 18px;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.c-btn-primary {
+    background: linear-gradient(135deg, var(--navy), var(--navy-light));
+    color: var(--white);
+}
+
+.c-btn-primary:hover {
+    box-shadow: 0 4px 12px rgba(11, 28, 58, .25);
+    transform: translateY(-1px);
+}
+
+.c-btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.c-btn-outline:hover {
+    border-color: var(--navy);
+    color: var(--navy);
+}
+
+.c-btn-teal {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color: white;
+}
+
+.c-btn-danger {
+    background: var(--red-alert);
+    color: white;
+}
+
+.c-btn-danger:hover {
+    background: #c94444;
+}
+
+.c-btn-sm {
+    padding: 5px 12px;
+    font-size: 12px;
+}

@@ -1,0 +1,28 @@
+/* Extraido de css/style.css (.panel). Componente base compartido: prefijo c-. */
+.c-panel {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+}
+
+.c-panel-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.c-panel-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+    flex: 1;
+    font-family: var(--font-display);
+}
+
+.c-panel-body {
+    padding: 22px;
+}

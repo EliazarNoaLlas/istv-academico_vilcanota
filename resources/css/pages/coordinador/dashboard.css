@@ -1,0 +1,6 @@
+/* Ajustes propios del dashboard de coordinador. Todo lo que sea unico
+ * de esta pagina vive aqui con prefijo .coord-dashboard-*, nunca en
+ * resources/css/components/ (eso rompería otras paginas). */
+.coord-dashboard-kpis {
+    margin-bottom: 24px;
+}

@@ -1,0 +1,90 @@
+/* Especifico de coordinador/portafolio. Prefijo obligatorio: .coord-portafolio-* */
+.coord-portafolio-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.coord-portafolio-toolbar select {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--white);
+}
+
+.coord-portafolio-empty {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.coord-portafolio-detalle {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.coord-portafolio-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 28, 58, .45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.coord-portafolio-modal-backdrop.show {
+    display: flex;
+}
+
+.coord-portafolio-modal {
+    background: var(--white);
+    border-radius: var(--radius);
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    padding: 28px;
+    box-shadow: var(--shadow-lg);
+}
+
+.coord-portafolio-modal h2 {
+    font-family: var(--font-display);
+    font-size: 17px;
+    color: var(--navy);
+    margin-bottom: 6px;
+}
+
+.coord-portafolio-modal p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.coord-portafolio-modal textarea {
+    width: 100%;
+    min-height: 90px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 13px;
+    resize: vertical;
+}
+
+.coord-portafolio-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.coord-portafolio-ia-nota {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: block;
+}

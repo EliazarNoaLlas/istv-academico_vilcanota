@@ -1,0 +1,33 @@
+.c-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.c-table thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--text-muted);
+    font-weight: 700;
+    padding: 10px 12px;
+    border-bottom: 2px solid var(--border);
+}
+
+.c-table tbody td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+}
+
+.c-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.c-table-empty {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}

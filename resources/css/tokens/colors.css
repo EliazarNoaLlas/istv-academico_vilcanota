@@ -1,0 +1,23 @@
+/*
+ * Paleta institucional ISTV Vilcanota, extraida tal cual del legacy
+ * css/style.css (:root). Compartida por los 4 roles - solo tokens,
+ * nunca estructura: ver resources/css/roles/*.css y pages/*.css para
+ * lo que SI debe quedar aislado por modulo.
+ */
+:root {
+    --navy: #0B1C3A;
+    --navy-mid: #122347;
+    --navy-light: #1a3160;
+    --gold: #C9922A;
+    --gold-light: #E8B84B;
+    --teal: #1ABFA0;
+    --teal-dark: #0E9980;
+    --red-alert: #E05050;
+    --surface: #F4F7FB;
+    --surface-2: #EBF0F8;
+    --white: #FFFFFF;
+    --text-primary: #0B1C3A;
+    --text-secondary: #4A5E7A;
+    --text-muted: #8A9BBC;
+    --border: #D8E3F0;
+}

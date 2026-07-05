@@ -1,0 +1,34 @@
+/* Extraido de css/style.css (.tabs). */
+.c-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 20px;
+}
+
+.c-tab-btn {
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all .15s;
+}
+
+.c-tab-btn.active {
+    color: var(--navy);
+    border-bottom-color: var(--teal);
+}
+
+.c-tab-pane {
+    display: none;
+}
+
+.c-tab-pane.active {
+    display: block;
+}
