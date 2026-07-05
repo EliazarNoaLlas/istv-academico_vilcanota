@@ -1,6 +1,6 @@
 # Guía de Despliegue Local — ISTV Laravel
 
-Guía del proceso de despliegue local del proyecto **istv-laravel** (Laravel 12) usando XAMPP.
+Guía del proceso de despliegue local del proyecto **istv-laravel** (Laravel 12) usando XAMPP. cambio
 
 ## 1. Requisitos verificados
 
