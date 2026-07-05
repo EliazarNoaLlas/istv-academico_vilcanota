@@ -8,6 +8,7 @@ use App\Http\Requests\Director\ResetUsuarioPasswordRequest;
 use App\Http\Requests\Director\StoreUsuarioRequest;
 use App\Http\Requests\Director\UpdateUsuarioEstadoRequest;
 use App\Http\Requests\Director\UpdateUsuarioRequest;
+use App\Models\Docente;
 use App\Models\ProgramaEstudio;
 use App\Models\Role;
 use App\Models\SolicitudPassword;
@@ -25,14 +26,27 @@ class DirectorUsuarioController extends Controller
         private readonly SolicitudPasswordService $solicitudes,
     ) {}
 
+    private const ESPECIALIDADES_SUGERIDAS = [
+        'Desarrollo de Software', 'Construcción Civil', 'Contabilidad', 'Enfermería',
+        'Producción Agropecuaria', 'Inglés', 'Comunicación', 'Matemática',
+        'Investigación', 'Ética Profesional', 'Educación Física',
+    ];
+
     public function page(): View
     {
+        $especialidadesRegistradas = Docente::whereNotNull('especialidad')
+            ->distinct()
+            ->pluck('especialidad');
+
         return view('director.usuarios.index', [
             'roles' => Role::orderBy('nombre')->get(),
             'rolesAsignables' => Role::whereIn('codigo', Role::CODIGOS_ASIGNABLES_POR_DIRECTOR)->orderBy('nombre')->get(),
             'programas' => ProgramaEstudio::orderBy('nombre')->get(),
-            'especialidadesDocente' => $this->usuarios->catalogoEspecialidades(),
-            'codigoDocenteSugerido' => $this->usuarios->siguienteCodigoDocente(),
+            'especialidades' => $especialidadesRegistradas
+                ->merge(self::ESPECIALIDADES_SUGERIDAS)
+                ->unique()
+                ->sort()
+                ->values(),
         ]);
     }
 
@@ -77,7 +91,7 @@ class DirectorUsuarioController extends Controller
     {
         $this->usuarios->resetPassword($usuario, $request->user());
 
-        return response()->json(['ok' => true, 'mensaje' => 'Se envio una contrasena temporal al correo institucional del usuario.']);
+        return response()->json(['ok' => true, 'mensaje' => 'Se envió una contraseña temporal al correo institucional del usuario.']);
     }
 
     public function solicitudesPassword(): JsonResponse

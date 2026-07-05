@@ -211,9 +211,6 @@
     padding: 3px;
     cursor: pointer;
     transition: background .15s;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
 }
 
 .academic-slot:hover {
@@ -232,8 +229,7 @@
 
 .schedule-block {
     display: block;
-    flex: 1;
-    min-height: 0;
+    margin-bottom: 2px;
     border-radius: 6px;
     border-left: 4px solid var(--course-border, var(--teal));
     background: var(--course-bg, var(--surface-2));
@@ -241,6 +237,10 @@
     cursor: grab;
     overflow: hidden;
     position: relative;
+}
+
+.schedule-block:last-child {
+    margin-bottom: 0;
 }
 
 .schedule-block strong {

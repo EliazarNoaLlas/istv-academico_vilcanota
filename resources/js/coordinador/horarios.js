@@ -540,6 +540,7 @@ export function initCoordinadorHorarios() {
     });
 
     document.getElementById('coord-horarios-nuevo')?.addEventListener('click', () => abrirModal());
+    document.getElementById('coord-horarios-guardar')?.addEventListener('click', guardarHorarioCompleto);
     document.getElementById('coord-horarios-modal-cerrar')?.addEventListener('click', cerrarModal);
     document.getElementById('coord-horarios-form')?.addEventListener('submit', enviarFormularioBloque);
 

@@ -3,10 +3,18 @@
 namespace App\Http\Controllers\Director;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Horarios\ClearHorarioRequest;
+use App\Http\Requests\Horarios\DetectHorarioConflictsRequest;
 use App\Http\Requests\Horarios\GenerateHorarioIaRequest;
+use App\Http\Requests\Horarios\StoreHorarioRequest;
+use App\Models\Docente;
 use App\Services\Horarios\HorarioAiGeneratorService;
 use App\Services\Horarios\HorarioCatalogService;
+use App\Services\Horarios\HorarioColorService;
+use App\Services\Horarios\HorarioConflictService;
+use App\Services\Horarios\HorarioPersistenceService;
 use App\Services\Horarios\HorarioQueryService;
+use App\Services\Horarios\HorarioValidationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,6 +25,10 @@ class DirectorHorarioController extends Controller
         private readonly HorarioQueryService $consultas,
         private readonly HorarioCatalogService $catalogos,
         private readonly HorarioAiGeneratorService $generadorIa,
+        private readonly HorarioConflictService $conflictos,
+        private readonly HorarioValidationService $reglas,
+        private readonly HorarioPersistenceService $persistencia,
+        private readonly HorarioColorService $colores,
     ) {}
 
     public function page(): View
@@ -33,12 +45,69 @@ class DirectorHorarioController extends Controller
             $request->query('id_programa') ? (int) $request->query('id_programa') : null,
         );
 
-        return response()->json(['ok' => true, 'horarios' => $horarios]);
+        $horarios->each(function ($horario) {
+            $horario->color = $this->colores->paraCurso($horario->id_curso);
+        });
+
+        return response()->json([
+            'ok' => true,
+            'horarios' => $horarios,
+            'docentes_activos' => Docente::where('estado_academico', 'ACTIVO')->count(),
+        ]);
     }
 
     public function catalogs(): JsonResponse
     {
         return response()->json(['ok' => true, ...$this->catalogos->obtener()]);
+    }
+
+    public function store(StoreHorarioRequest $request): JsonResponse
+    {
+        $bloques = $request->validated('horarios');
+
+        $errores = $this->reglas->validarReglasInstitucionales($bloques);
+        if ($errores !== []) {
+            return response()->json(['ok' => false, 'errores' => $errores], 422);
+        }
+
+        $conflictos = $this->conflictos->detectar($bloques);
+        if ($conflictos !== []) {
+            return response()->json(['ok' => false, 'conflictos' => $conflictos], 422);
+        }
+
+        $filtros = array_filter([
+            'id_docente' => $request->validated('filtro_docente'),
+            'semestre' => $request->validated('filtro_semestre'),
+            'id_programa' => $request->validated('filtro_programa'),
+        ]);
+
+        $this->persistencia->guardar($bloques, $filtros);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function detectConflicts(DetectHorarioConflictsRequest $request): JsonResponse
+    {
+        $bloques = $request->validated('horarios');
+
+        return response()->json([
+            'ok' => true,
+            'conflictos' => $this->conflictos->detectar($bloques),
+            'errores_institucionales' => $this->reglas->validarReglasInstitucionales($bloques),
+        ]);
+    }
+
+    public function clear(ClearHorarioRequest $request): JsonResponse
+    {
+        $filtros = array_filter([
+            'id_docente' => $request->validated('filtro_docente'),
+            'semestre' => $request->validated('filtro_semestre'),
+            'id_programa' => $request->validated('filtro_programa'),
+        ]);
+
+        $eliminados = $this->persistencia->eliminarPorFiltro($filtros);
+
+        return response()->json(['ok' => true, 'eliminados' => $eliminados]);
     }
 
     /** Genera con IA el horario de un programa restringido al semestre indicado. */

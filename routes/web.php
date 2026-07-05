@@ -157,7 +157,10 @@ Route::middleware(['auth', 'role:director'])->prefix('api/director')->group(func
     Route::get('/programas', [DirectorProgramaController::class, 'index']);
 
     Route::get('/horarios', [DirectorHorarioController::class, 'index']);
+    Route::post('/horarios', [DirectorHorarioController::class, 'store']);
     Route::get('/horarios/catalogos', [DirectorHorarioController::class, 'catalogs']);
+    Route::post('/horarios/detectar-conflictos', [DirectorHorarioController::class, 'detectConflicts']);
+    Route::post('/horarios/limpiar', [DirectorHorarioController::class, 'clear']);
     Route::post('/horarios/generar-semestre', [DirectorHorarioController::class, 'generateSemester']);
     Route::post('/horarios/generar-todos', [DirectorHorarioController::class, 'generateAllSemesters']);
     Route::post('/horarios/ia/{idGeneracion}/aprobar', [DirectorHorarioController::class, 'aprobarGeneracionIa']);

@@ -25,36 +25,9 @@ class UsuarioAdminService
                 ->orWhere('correo', 'like', "%{$q}%")))
             ->when($idRol, fn ($query) => $query->where('id_rol', $idRol))
             ->when($estado, fn ($query) => $query->where('estado', $estado))
-            ->with(['rol', 'docente.programas'])
+            ->with('rol')
             ->orderBy('nombres')
             ->get();
-    }
-
-    public function catalogoEspecialidades(): Collection
-    {
-        return Docente::query()
-            ->whereNotNull('especialidad')
-            ->where('especialidad', '!=', '')
-            ->select('especialidad')
-            ->distinct()
-            ->orderBy('especialidad')
-            ->pluck('especialidad');
-    }
-
-    public function siguienteCodigoDocente(): string
-    {
-        $ultimoCodigo = Docente::query()
-            ->where('codigo_docente', 'like', 'doc%')
-            ->orderByDesc('codigo_docente')
-            ->value('codigo_docente');
-
-        $siguiente = 1;
-
-        if ($ultimoCodigo && preg_match('/^doc(\d+)$/i', $ultimoCodigo, $matches)) {
-            $siguiente = ((int) $matches[1]) + 1;
-        }
-
-        return sprintf('doc%03d', $siguiente);
     }
 
     /** Crea el usuario y, si el rol es docente, tambien su perfil academico. */
@@ -77,18 +50,17 @@ class UsuarioAdminService
             }
 
             $this->auditar($creadoPor, 'USUARIO_CREADO', $usuario, "Cuenta creada con rol {$usuario->id_rol}");
-            $this->enviarCredenciales($usuario, $passwordTemporal, 'Se creo su cuenta institucional en el Sistema Academico ISTV.');
+            $this->enviarCredenciales($usuario, $passwordTemporal, 'Se creó su cuenta institucional en el Sistema Académico ISTV.');
 
-            return $usuario->load(['rol', 'docente.programas']);
+            return $usuario->load('rol', 'docente');
         });
     }
 
     private function separarDatosDocente(array $datos): array
     {
-        $camposDocente = ['codigo_docente', 'especialidad', 'tipo_docente', 'programas'];
+        $camposDocente = ['especialidad', 'tipo_docente', 'programas'];
 
         $datosDocente = isset($datos['tipo_docente']) ? [
-            'codigo_docente' => $this->siguienteCodigoDocente(),
             'especialidad' => $datos['especialidad'] ?? null,
             'tipo_docente' => $datos['tipo_docente'],
             'programas' => $datos['programas'] ?? [],
@@ -103,7 +75,7 @@ class UsuarioAdminService
     {
         $docente = Docente::create([
             'id_usuario' => $usuario->id_usuario,
-            'codigo_docente' => $datosDocente['codigo_docente'],
+            'codigo_docente' => $this->generarCodigoDocente(),
             'especialidad' => $datosDocente['especialidad'],
             'tipo_docente' => $datosDocente['tipo_docente'],
             'estado_academico' => $usuario->estado === 'ACTIVO' ? 'ACTIVO' : 'INACTIVO',
@@ -120,13 +92,25 @@ class UsuarioAdminService
         }
     }
 
+    /** Genera codigo_docente con patron DOC### a partir del ultimo correlativo usado (incluye eliminados, para no reutilizar codigos). */
+    private function generarCodigoDocente(): string
+    {
+        $ultimoNumero = Docente::withTrashed()
+            ->where('codigo_docente', 'like', 'DOC%')
+            ->get()
+            ->map(fn ($d) => (int) preg_replace('/\D/', '', $d->codigo_docente))
+            ->max() ?? 0;
+
+        return 'DOC'.str_pad((string) ($ultimoNumero + 1), 3, '0', STR_PAD_LEFT);
+    }
+
     public function actualizar(User $usuario, array $datos, User $actorPor): User
     {
         $usuario->update($datos);
 
         $this->auditar($actorPor, 'USUARIO_ACTUALIZADO', $usuario, 'Datos de la cuenta actualizados');
 
-        return $usuario->fresh(['rol', 'docente.programas']);
+        return $usuario->fresh('rol');
     }
 
     public function cambiarEstado(User $usuario, string $estado, string $motivo, User $actorPor): User
@@ -149,8 +133,8 @@ class UsuarioAdminService
             'cambio_password_obligatorio' => true,
         ])->save();
 
-        $this->auditar($actorPor, 'PASSWORD_RESTABLECIDA', $usuario, 'Contrasena restablecida por Direccion');
-        $this->enviarCredenciales($usuario, $passwordTemporal, 'Direccion Academica restablecio la contrasena de su cuenta.');
+        $this->auditar($actorPor, 'PASSWORD_RESTABLECIDA', $usuario, 'Contraseña restablecida por Dirección');
+        $this->enviarCredenciales($usuario, $passwordTemporal, 'Dirección Académica restableció la contraseña de su cuenta.');
     }
 
     private function enviarCredenciales(User $usuario, string $passwordTemporal, string $motivo): void

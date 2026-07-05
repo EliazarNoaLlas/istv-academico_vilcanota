@@ -9,6 +9,9 @@
         <button type="button" id="coord-horarios-nuevo" class="c-btn c-btn-primary c-btn-sm">
             <i class="bi bi-plus-lg"></i> Nuevo bloque
         </button>
+        <button type="button" id="coord-horarios-guardar" class="c-btn c-btn-primary c-btn-sm">
+            <i class="bi bi-save"></i> Guardar horario completo
+        </button>
         <button type="button" id="coord-horarios-generar-semestre" class="c-btn c-btn-teal c-btn-sm">
             <i class="bi bi-magic"></i> Generar semestre
         </button>

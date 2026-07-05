@@ -29,40 +29,11 @@ class UpdateUsuarioRequest extends FormRequest
         ];
     }
 
-    public function messages(): array
-    {
-        return [
-            'nombres.required' => 'El nombre es obligatorio.',
-            'usuario.required' => 'El usuario es obligatorio.',
-            'usuario.unique' => 'El usuario ya ha sido registrado.',
-            'correo.required' => 'El correo institucional es obligatorio.',
-            'correo.email' => 'Ingrese un correo institucional valido.',
-            'correo.unique' => 'El correo ya ha sido registrado.',
-            'id_rol.required' => 'Seleccione un rol.',
-            'id_rol.exists' => 'El rol seleccionado no es valido.',
-            'dni.size' => 'El DNI debe tener exactamente 8 digitos.',
-            'dni.unique' => 'El DNI ya ha sido registrado.',
-        ];
-    }
-
-    public function attributes(): array
-    {
-        return [
-            'nombres' => 'nombres',
-            'apellidos' => 'apellidos',
-            'usuario' => 'usuario',
-            'correo' => 'correo institucional',
-            'id_rol' => 'rol',
-            'dni' => 'DNI',
-            'telefono' => 'telefono',
-        ];
-    }
-
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
             if ($this->filled('id_rol') && Role::find($this->input('id_rol'))?->codigo === 'director') {
-                $validator->errors()->add('id_rol', 'No esta permitido asignar el rol Director desde este modulo.');
+                $validator->errors()->add('id_rol', 'No está permitido asignar el rol Director desde este módulo.');
             }
         });
     }

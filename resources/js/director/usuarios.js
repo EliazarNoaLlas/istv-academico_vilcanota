@@ -128,7 +128,32 @@ function cambiarEstado(idUsuario, estado, motivo) {
 
 let usuarioEnEdicion = null;
 
+/** Con tipo ESPECIFICO los checkboxes de programa se comportan como radio (solo 1); con GENERAL, seleccion libre. */
+function aplicarModoProgramas() {
+    const esGeneral = document.querySelector('input[name="tipo_docente"]:checked')?.value === 'GENERAL';
+    const checks = document.querySelectorAll('#dir-usuarios-programas-lista input[type="checkbox"]');
+
+    document.getElementById('dir-usuarios-programas-hint').textContent = esGeneral
+        ? 'Puede seleccionar varios programas.'
+        : 'Seleccione un único programa (docente específico).';
+
+    checks.forEach((chk) => {
+        chk.addEventListener('change', () => {
+            if (!esGeneral && chk.checked) {
+                checks.forEach((otro) => { if (otro !== chk) otro.checked = false; });
+            }
+        });
+    });
+}
+
+/** El perfil academico solo se completa al crear: editar no lo modifica todavia. */
 function actualizarVisibilidadDocente() {
+    if (usuarioEnEdicion) {
+        document.getElementById('dir-usuarios-campos-docente').style.display = 'none';
+
+        return;
+    }
+
     const select = document.getElementById('dir-usuarios-select-rol');
     const codigo = select?.selectedOptions[0]?.dataset.codigo;
     document.getElementById('dir-usuarios-campos-docente').style.display = codigo === 'docente' ? 'block' : 'none';
@@ -138,7 +163,7 @@ function abrirModal(usuario = null) {
     usuarioEnEdicion = usuario;
     const form = document.getElementById('dir-usuarios-form');
     form.reset();
-    document.getElementById('dir-usuarios-form-error').textContent = '';
+    limpiarErrores();
     document.getElementById('dir-usuarios-modal-title').textContent = usuario ? 'Editar usuario' : 'Nuevo usuario';
     document.getElementById('dir-usuarios-campo-estado').style.display = usuario ? 'none' : 'block';
 
@@ -150,6 +175,7 @@ function abrirModal(usuario = null) {
     }
 
     actualizarVisibilidadDocente();
+    aplicarModoProgramas();
     document.getElementById('dir-usuarios-modal').classList.add('show');
 }
 
@@ -159,20 +185,55 @@ function cerrarModal() {
 }
 
 function construirPayload(form) {
-    const datos = Object.fromEntries(new FormData(form).entries());
-    const programas = new FormData(form).getAll('programas[]').map(Number);
+    const formData = new FormData(form);
+    const datos = {};
 
-    if (programas.length) datos.programas = programas;
-    delete datos['programas[]'];
+    formData.forEach((valor, clave) => {
+        if (clave === 'programas[]') return;
+        datos[clave] = valor;
+    });
+
+    const programas = formData.getAll('programas[]').map(Number);
+    if (document.getElementById('dir-usuarios-campos-docente').style.display !== 'none') {
+        datos.programas = programas;
+    }
 
     return datos;
+}
+
+function limpiarErrores() {
+    document.getElementById('dir-usuarios-form-error').textContent = '';
+    document.querySelectorAll('#dir-usuarios-form .dir-usuarios-field-error').forEach((el) => { el.textContent = ''; });
+    document.querySelectorAll('#dir-usuarios-form .is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+}
+
+function mostrarErrores(errores) {
+    limpiarErrores();
+
+    if (!errores) {
+        document.getElementById('dir-usuarios-form-error').textContent = 'No se pudo guardar el usuario.';
+        return;
+    }
+
+    Object.entries(errores).forEach(([campo, mensajes]) => {
+        const campoBase = campo.replace('.*', '').split('.')[0];
+        const contenedor = document.querySelector(`[data-error-for="${campoBase}"]`);
+        const mensaje = Array.isArray(mensajes) ? mensajes[0] : mensajes;
+
+        if (contenedor) {
+            contenedor.textContent = mensaje;
+            const input = document.querySelector(`#dir-usuarios-form [name="${campoBase}"], #dir-usuarios-form [name="${campoBase}[]"]`);
+            input?.classList.add('is-invalid');
+        } else {
+            document.getElementById('dir-usuarios-form-error').textContent = mensaje;
+        }
+    });
 }
 
 function enviarFormulario(event) {
     event.preventDefault();
     const form = event.target;
     const datos = construirPayload(form);
-    const errorBox = document.getElementById('dir-usuarios-form-error');
 
     const url = usuarioEnEdicion ? `/api/director/usuarios/${usuarioEnEdicion.id_usuario}` : '/api/director/usuarios';
     const method = usuarioEnEdicion ? 'PUT' : 'POST';
@@ -193,10 +254,7 @@ function enviarFormulario(event) {
             cargarUsuarios();
             alert(usuarioEnEdicion ? 'Usuario actualizado.' : 'Usuario creado. Se envió la contraseña temporal a su correo institucional.');
         })
-        .catch((error) => {
-            const mensajes = error?.errors ? Object.values(error.errors).flat().join(' ') : (error?.message ?? 'No se pudo guardar el usuario.');
-            errorBox.textContent = mensajes;
-        });
+        .catch((error) => mostrarErrores(error?.errors));
 }
 
 let motivoCallback = null;
@@ -287,6 +345,9 @@ export function initDirectorUsuarios() {
     document.getElementById('dir-usuarios-modal-cerrar')?.addEventListener('click', cerrarModal);
     document.getElementById('dir-usuarios-form')?.addEventListener('submit', enviarFormulario);
     document.getElementById('dir-usuarios-select-rol')?.addEventListener('change', actualizarVisibilidadDocente);
+    document.querySelectorAll('input[name="tipo_docente"]').forEach((radio) => {
+        radio.addEventListener('change', aplicarModoProgramas);
+    });
 
     document.getElementById('dir-usuarios-motivo-cancelar')?.addEventListener('click', () => cerrarModalMotivo(true));
     document.getElementById('dir-usuarios-motivo-form')?.addEventListener('submit', (event) => {
