@@ -34,12 +34,7 @@
         </div>
 
         <div class="c-panel">
-            <div class="c-panel-header">
-                <i class="bi bi-funnel"></i><h3>Filtros de cursos</h3>
-                <button type="button" id="coord-cursos-nuevo" class="c-btn c-btn-primary c-btn-sm">
-                    <i class="bi bi-plus-lg"></i> Nuevo curso
-                </button>
-            </div>
+            <div class="c-panel-header"><i class="bi bi-funnel"></i><h3>Filtros de cursos</h3></div>
             <div class="c-panel-body">
                 <div class="coord-cursos-toolbar">
                     <input type="text" id="coord-cursos-search" class="input-inline coord-cursos-search"

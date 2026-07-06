@@ -25,6 +25,7 @@ class PortafolioDocumentoController extends Controller
             $request->query('id_portafolio') ? (int) $request->query('id_portafolio') : null,
             $request->query('id_curso') ? (int) $request->query('id_curso') : null,
             $request->query('tipo'),
+            $request->query('id_docente') ? (int) $request->query('id_docente') : null,
         );
 
         return response()->json(['ok' => true, 'documentos' => $documentos]);
@@ -32,6 +33,18 @@ class PortafolioDocumentoController extends Controller
 
     public function store(UploadPortafolioRequest $request): JsonResponse
     {
+        // id_docente nunca se toma del cliente: se usa el perfil docente
+        // propio del usuario autenticado (coordinador o docente), para que
+        // nadie pueda subir un documento atribuido a otro docente. Se usa
+        // miDocentePropio() (no la relacion docente()) porque el scope de
+        // aislamiento por programa no debe poder ocultarle a alguien su
+        // propia cuenta.
+        $miDocente = $request->user()->miDocentePropio();
+
+        if (! $miDocente) {
+            return response()->json(['ok' => false, 'mensaje' => 'Su cuenta no tiene un perfil docente asociado.'], 403);
+        }
+
         // La regla "exists" del FormRequest consulta la tabla directamente y
         // no respeta el scope de coordinador; se revalida aqui contra el
         // modelo Eloquent para no permitir subir documentos a un curso de
@@ -43,7 +56,7 @@ class PortafolioDocumentoController extends Controller
         try {
             $documento = $this->subida->subir(
                 $request->file('documento'),
-                (int) $request->validated('id_docente'),
+                $miDocente->id_docente,
                 (int) $request->validated('id_curso'),
                 (int) $request->validated('id_periodo'),
                 $request->validated('tipo'),

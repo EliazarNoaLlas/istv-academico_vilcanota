@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Coordinador;
 
 use App\Http\Controllers\Controller;
+use App\Models\Curso;
+use App\Models\PeriodoAcademico;
+use App\Models\Scopes\CoordinadorProgramaDirectoScope;
 use App\Services\Academic\CursoService;
 use App\Services\Academic\DocenteService;
 use App\Services\Portafolios\PortafolioDocumentoService;
@@ -20,9 +23,26 @@ class CoordinadorPortafolioController extends Controller
 
     public function page(): View
     {
+        // El coordinador puede ademas tener perfil docente propio (dicta
+        // cursos ademas de coordinar): si lo tiene, ve una seccion propia
+        // "Mi portafolio" separada del panel de revision de todos. Se usa
+        // miDocentePropio()/withoutGlobalScope porque el scope de aislamiento
+        // por programa esta pensado para OTROS docentes, no para ocultarle a
+        // alguien su propia cuenta.
+        $miDocente = auth()->user()->miDocentePropio();
+
+        if ($miDocente) {
+            $miDocente->setRelation(
+                'cursos',
+                Curso::withoutGlobalScope(CoordinadorProgramaDirectoScope::class)->where('id_docente', $miDocente->id_docente)->get(),
+            );
+        }
+
         return view('coordinador.portafolio.index', [
             'cursos' => $this->cursos->listar(),
             'docentes' => $this->docentes->listar(),
+            'miDocente' => $miDocente,
+            'periodoActivo' => PeriodoAcademico::where('estado', 'ACTIVO')->first(),
         ]);
     }
 

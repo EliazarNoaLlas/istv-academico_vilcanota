@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CoordinadorDocenteProgramaScope;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -74,6 +75,19 @@ class User extends Authenticatable
     public function docente(): HasOne
     {
         return $this->hasOne(Docente::class, 'id_usuario');
+    }
+
+    /**
+     * Perfil docente propio (un coordinador puede ademas dictar cursos),
+     * ignorando el scope de aislamiento por programa: ese scope protege el
+     * acceso a OTROS docentes, no debe poder ocultarle a alguien su propia
+     * cuenta aunque su docente aun no tenga un docente_programa asignado.
+     */
+    public function miDocentePropio(): ?Docente
+    {
+        return Docente::withoutGlobalScope(CoordinadorDocenteProgramaScope::class)
+            ->where('id_usuario', $this->id_usuario)
+            ->first();
     }
 
     public function programa(): BelongsTo

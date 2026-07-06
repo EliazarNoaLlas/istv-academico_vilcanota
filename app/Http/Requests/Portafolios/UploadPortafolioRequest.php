@@ -20,7 +20,6 @@ class UploadPortafolioRequest extends FormRequest
                 'mimes:pdf,doc,docx,xls,xlsx,txt,csv,md,json,html',
                 'max:10240',
             ],
-            'id_docente' => ['required', 'integer', 'exists:docentes,id_docente'],
             'id_curso' => ['required', 'integer', 'exists:cursos,id_curso'],
             'id_periodo' => ['required', 'integer', 'exists:periodos_academicos,id_periodo'],
             'tipo' => [

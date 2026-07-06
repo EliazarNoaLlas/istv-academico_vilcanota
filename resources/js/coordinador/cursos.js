@@ -191,7 +191,6 @@ export function initCoordinadorCursos() {
     document.getElementById('coord-cursos-filtro-modulo')?.addEventListener('change', () => cargarCursos(filtrosActuales()));
     document.getElementById('coord-cursos-filtro-programa')?.addEventListener('change', () => cargarCursos(filtrosActuales()));
 
-    document.getElementById('coord-cursos-nuevo')?.addEventListener('click', () => abrirModal());
     document.getElementById('coord-cursos-modal-cerrar')?.addEventListener('click', cerrarModal);
     document.getElementById('coord-cursos-form')?.addEventListener('submit', enviarFormulario);
 }

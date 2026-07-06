@@ -35,6 +35,45 @@ function renderRow(doc) {
     `;
 }
 
+let cursosDisponibles = [];
+
+/** Captura una sola vez las opciones reales del select (antes de reescribirlo). */
+function capturarCursosDisponibles() {
+    const select = document.getElementById('coord-portafolio-filtro-curso');
+
+    cursosDisponibles = Array.from(select.querySelectorAll('option[value]:not([value=""])')).map((opt) => ({
+        value: opt.value,
+        texto: opt.textContent,
+        idDocente: opt.dataset.idDocente,
+        semestre: opt.dataset.semestre,
+    }));
+}
+
+/** Al elegir un docente, el select de curso se limita a lo que ese docente tiene asignado, agrupado por semestre. */
+function actualizarCursosPorDocente() {
+    const idDocente = document.getElementById('coord-portafolio-filtro-docente')?.value;
+    const select = document.getElementById('coord-portafolio-filtro-curso');
+    const cursos = idDocente ? cursosDisponibles.filter((c) => c.idDocente === idDocente) : cursosDisponibles;
+
+    const porSemestre = cursos.reduce((grupos, curso) => {
+        const clave = curso.semestre || 'Sin semestre';
+        (grupos[clave] ??= []).push(curso);
+
+        return grupos;
+    }, {});
+
+    const grupos = Object.keys(porSemestre)
+        .sort()
+        .map((semestre) => `
+            <optgroup label="Semestre ${semestre}">
+                ${porSemestre[semestre].map((c) => `<option value="${c.value}">${c.texto}</option>`).join('')}
+            </optgroup>
+        `)
+        .join('');
+
+    select.innerHTML = `<option value="">Todos los cursos</option>${grupos}`;
+}
+
 function filtrosActuales() {
     const params = {};
     const docente = document.getElementById('coord-portafolio-filtro-docente')?.value;
@@ -145,14 +184,103 @@ function validar(estado) {
         .catch((error) => console.error(error));
 }
 
+function cambiarTab(nombre) {
+    document.querySelectorAll('.c-tab-btn').forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === nombre));
+    document.querySelectorAll('.c-tab-pane').forEach((pane) => pane.classList.toggle('active', pane.id === `tab-${nombre}`));
+
+    if (nombre === 'mio') cargarMiPortafolio();
+}
+
+function renderRowMio(doc) {
+    const curso = doc.portafolio?.curso?.nombre_curso ?? '—';
+
+    return `
+        <tr>
+            <td>${doc.titulo}</td>
+            <td>${curso}</td>
+            <td>${doc.tipo}</td>
+            <td>${badgeEstado(doc)}</td>
+            <td><button type="button" class="c-btn c-btn-outline c-btn-sm" data-eliminar-mio="${doc.id_documento}">Eliminar</button></td>
+        </tr>
+    `;
+}
+
+function cargarMiPortafolio() {
+    const form = document.getElementById('coord-mi-portafolio-form');
+    const tbody = document.getElementById('coord-mi-portafolio-tbody');
+    if (!form || !tbody) return;
+
+    fetch(`/api/coordinador/portafolios?id_docente=${form.dataset.idDocente}`, { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            const documentos = data.documentos ?? [];
+
+            tbody.innerHTML = documentos.length
+                ? documentos.map(renderRowMio).join('')
+                : '<tr><td colspan="5" class="coord-portafolio-empty">Todavía no subiste documentos.</td></tr>';
+
+            document.querySelectorAll('[data-eliminar-mio]').forEach((btn) => {
+                btn.addEventListener('click', () => eliminarDocumentoMio(btn.dataset.eliminarMio));
+            });
+        })
+        .catch((error) => {
+            tbody.innerHTML = '<tr><td colspan="5" class="coord-portafolio-empty">No se pudo cargar tu portafolio.</td></tr>';
+            console.error(error);
+        });
+}
+
+function eliminarDocumentoMio(idDocumento) {
+    if (!confirm('¿Eliminar este documento de tu portafolio?')) return;
+
+    fetch(`/api/portafolios/documentos/${idDocumento}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    })
+        .then((res) => res.json())
+        .then(() => cargarMiPortafolio())
+        .catch((error) => console.error(error));
+}
+
+function subirDocumentoMio(event) {
+    event.preventDefault();
+    const form = event.target;
+    const errorBox = document.getElementById('coord-mi-portafolio-error');
+    errorBox.textContent = '';
+
+    fetch('/api/portafolios/documentos', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: new FormData(form),
+    })
+        .then(async (res) => {
+            const body = await res.json();
+            if (!res.ok) throw body;
+
+            return body;
+        })
+        .then(() => {
+            form.reset();
+            cargarMiPortafolio();
+        })
+        .catch((error) => {
+            errorBox.textContent = error?.mensaje ?? (error?.errors ? Object.values(error.errors).flat().join(' ') : 'No se pudo subir el documento.');
+        });
+}
+
 export function initCoordinadorPortafolio() {
     const tbody = document.getElementById('coord-portafolio-tbody');
     if (!tbody) return;
 
+    capturarCursosDisponibles();
     cargarDocumentos();
     cargarKpis();
 
-    ['coord-portafolio-filtro-docente', 'coord-portafolio-filtro-curso', 'coord-portafolio-filtro-estado'].forEach((id) => {
+    document.getElementById('coord-portafolio-filtro-docente')?.addEventListener('change', () => {
+        actualizarCursosPorDocente();
+        cargarDocumentos();
+    });
+
+    ['coord-portafolio-filtro-curso', 'coord-portafolio-filtro-estado'].forEach((id) => {
         document.getElementById(id)?.addEventListener('change', cargarDocumentos);
     });
 
@@ -160,6 +288,11 @@ export function initCoordinadorPortafolio() {
     document.getElementById('coord-portafolio-analizar-ia')?.addEventListener('click', analizarIA);
     document.getElementById('coord-portafolio-aprobar')?.addEventListener('click', () => validar('APROBADO'));
     document.getElementById('coord-portafolio-observar')?.addEventListener('click', () => validar('OBSERVADO'));
+
+    document.querySelectorAll('.c-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => cambiarTab(btn.dataset.tab));
+    });
+    document.getElementById('coord-mi-portafolio-form')?.addEventListener('submit', subirDocumentoMio);
 }
 
 document.addEventListener('DOMContentLoaded', initCoordinadorPortafolio);
