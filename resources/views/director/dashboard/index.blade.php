@@ -35,6 +35,15 @@
             </div>
         </div>
 
+        <div class="c-panel">
+            <div class="c-panel-header"><i class="bi bi-mortarboard"></i><h3>Programas de Estudio</h3></div>
+            <div class="c-panel-body">
+                <div class="dir-kpis" id="dir-dashboard-programas">
+                    <div class="c-stat-card teal"><div class="c-stat-label">Cargando…</div></div>
+                </div>
+            </div>
+        </div>
+
         <div class="dir-grid-2">
             <div class="c-panel">
                 <div class="c-panel-header"><i class="bi bi-bar-chart"></i><h3>Rendimiento Académico por Programa de Estudio</h3></div>

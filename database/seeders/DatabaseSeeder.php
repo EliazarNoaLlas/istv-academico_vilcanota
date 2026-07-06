@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             PeriodoAcademicoSeeder::class,
             AulaSeeder::class,
             ConfiguracionSistemaSeeder::class,
+            CursoSeeder::class,
             UsuarioBaseSeeder::class,
         ]);
     }

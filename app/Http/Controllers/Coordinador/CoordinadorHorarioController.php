@@ -8,6 +8,7 @@ use App\Http\Requests\Horarios\DetectHorarioConflictsRequest;
 use App\Http\Requests\Horarios\GenerateHorarioIaRequest;
 use App\Http\Requests\Horarios\StoreHorarioRequest;
 use App\Models\Docente;
+use App\Models\HorarioIaGenerado;
 use App\Services\Horarios\HorarioAiGeneratorService;
 use App\Services\Horarios\HorarioCatalogService;
 use App\Services\Horarios\HorarioColorService;
@@ -33,7 +34,20 @@ class CoordinadorHorarioController extends Controller
 
     public function page(): View
     {
-        return view('coordinador.horarios.index', $this->catalogos->obtener());
+        return view('coordinador.horarios.index', $this->catalogosPropios());
+    }
+
+    /** Igual que HorarioCatalogService::obtener() pero con el selector de programa
+     *  restringido al unico programa del coordinador (nunca ve los demas). */
+    private function catalogosPropios(): array
+    {
+        $catalogos = $this->catalogos->obtener();
+        $catalogos['programas'] = array_values(array_filter(
+            $catalogos['programas']->all(),
+            fn ($programa) => $programa->id_programa === auth()->user()->id_programa,
+        ));
+
+        return $catalogos;
     }
 
     public function index(Request $request): JsonResponse
@@ -58,7 +72,7 @@ class CoordinadorHorarioController extends Controller
 
     public function catalogs(): JsonResponse
     {
-        return response()->json(['ok' => true, ...$this->catalogos->obtener()]);
+        return response()->json(['ok' => true, ...$this->catalogosPropios()]);
     }
 
     public function store(StoreHorarioRequest $request): JsonResponse
@@ -78,7 +92,8 @@ class CoordinadorHorarioController extends Controller
         $filtros = array_filter([
             'id_docente' => $request->validated('filtro_docente'),
             'semestre' => $request->validated('filtro_semestre'),
-            'id_programa' => $request->validated('filtro_programa'),
+            // Nunca se toma del cliente: el coordinador solo guarda horarios de su propio programa.
+            'id_programa' => auth()->user()->id_programa,
         ]);
 
         $this->persistencia->guardar($bloques, $filtros);
@@ -102,7 +117,8 @@ class CoordinadorHorarioController extends Controller
         $filtros = array_filter([
             'id_docente' => $request->validated('filtro_docente'),
             'semestre' => $request->validated('filtro_semestre'),
-            'id_programa' => $request->validated('filtro_programa'),
+            // Nunca se toma del cliente: el coordinador solo limpia horarios de su propio programa.
+            'id_programa' => auth()->user()->id_programa,
         ]);
 
         $eliminados = $this->persistencia->eliminarPorFiltro($filtros);
@@ -115,6 +131,8 @@ class CoordinadorHorarioController extends Controller
     {
         return response()->json($this->generadorIa->generar([
             ...$request->validated(),
+            // Nunca se toma del cliente: solo puede generar horarios de su propio programa.
+            'id_programa' => auth()->user()->id_programa,
             'id_usuario' => $request->user()?->id_usuario,
         ]));
     }
@@ -124,6 +142,7 @@ class CoordinadorHorarioController extends Controller
     {
         return response()->json($this->generadorIa->generar([
             ...$request->validated(),
+            'id_programa' => auth()->user()->id_programa,
             'semestre' => null,
             'id_usuario' => $request->user()?->id_usuario,
         ]));
@@ -131,21 +150,44 @@ class CoordinadorHorarioController extends Controller
 
     public function aprobarGeneracionIa(int $idGeneracion): JsonResponse
     {
+        $this->verificarGeneracionPropia($idGeneracion);
+
         return response()->json($this->generadorIa->aprobar($idGeneracion));
     }
 
     public function descartarGeneracionIa(int $idGeneracion): JsonResponse
     {
+        $this->verificarGeneracionPropia($idGeneracion);
+
         return response()->json($this->generadorIa->descartar($idGeneracion));
     }
 
     public function repararGeneracionIa(Request $request, int $idGeneracion): JsonResponse
     {
+        $this->verificarGeneracionPropia($idGeneracion);
+
         return response()->json($this->generadorIa->reparar($idGeneracion, $request->integer('max_intentos_reparacion') ?: null));
     }
 
     public function estadoGeneracionIa(int $idGeneracion): JsonResponse
     {
+        $this->verificarGeneracionPropia($idGeneracion);
+
         return response()->json($this->generadorIa->estado($idGeneracion));
+    }
+
+    /**
+     * HorarioIaGenerado no tiene scope global (no cuelga de un curso todavia
+     * guardado): se identifica el programa de la generacion por el filtro
+     * con el que se creo y se compara contra el del coordinador autenticado.
+     */
+    private function verificarGeneracionPropia(int $idGeneracion): void
+    {
+        $generacion = HorarioIaGenerado::find($idGeneracion);
+        $idProgramaGeneracion = $generacion?->metadata_json['filtro']['id_programa'] ?? null;
+
+        if (! $generacion || (int) $idProgramaGeneracion !== (int) auth()->user()->id_programa) {
+            abort(404);
+        }
     }
 }

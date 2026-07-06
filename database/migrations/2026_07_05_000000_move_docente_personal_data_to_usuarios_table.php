@@ -55,16 +55,15 @@ return new class extends Migration
             $table->dropColumn(['dni', 'nombres', 'apellido_paterno', 'apellido_materno']);
         });
 
-        Schema::table('docentes', function (Blueprint $table) {
-            $table->renameColumn('estado', 'estado_academico');
-        });
+        // Se usa SQL directo en lugar de renameColumn() porque el compilador de
+        // rename legado de Laravel para MariaDB < 10.5.2 duplica las comillas
+        // del valor default en columnas enum (bug de compatibilidad conocido).
+        DB::statement("ALTER TABLE docentes CHANGE estado estado_academico ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO'");
     }
 
     public function down(): void
     {
-        Schema::table('docentes', function (Blueprint $table) {
-            $table->renameColumn('estado_academico', 'estado');
-        });
+        DB::statement("ALTER TABLE docentes CHANGE estado_academico estado ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO'");
 
         Schema::table('docentes', function (Blueprint $table) {
             $table->char('dni', 8)->nullable()->after('codigo_docente');

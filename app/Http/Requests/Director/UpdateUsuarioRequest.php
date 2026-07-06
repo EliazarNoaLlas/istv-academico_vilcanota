@@ -17,6 +17,7 @@ class UpdateUsuarioRequest extends FormRequest
     public function rules(): array
     {
         $usuario = $this->route('usuario');
+        $esCoordinador = $this->rolSeleccionado()?->codigo === 'coordinador';
 
         return [
             'nombres' => ['required', 'string', 'max:120'],
@@ -26,7 +27,13 @@ class UpdateUsuarioRequest extends FormRequest
             'id_rol' => ['required', Rule::exists('roles', 'id_rol')],
             'dni' => ['nullable', 'string', 'size:8', Rule::unique('usuarios', 'dni')->ignore($usuario->id_usuario, 'id_usuario')],
             'telefono' => ['nullable', 'string', 'max:20'],
+            'id_programa' => [$esCoordinador ? 'required' : 'nullable', Rule::exists('programas_estudio', 'id_programa')],
         ];
+    }
+
+    private function rolSeleccionado(): ?Role
+    {
+        return $this->filled('id_rol') ? Role::find($this->input('id_rol')) : null;
     }
 
     public function withValidator($validator): void

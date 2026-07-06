@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Director;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Director\StoreEstudianteRequest;
 use App\Models\ProgramaEstudio;
 use App\Services\Academic\EstudianteService;
 use Illuminate\Http\JsonResponse;
@@ -28,5 +29,12 @@ class DirectorEstudianteController extends Controller
         );
 
         return response()->json(['ok' => true, 'estudiantes' => $estudiantes]);
+    }
+
+    public function store(StoreEstudianteRequest $request): JsonResponse
+    {
+        $estudiante = $this->estudiantes->crear($request->validated());
+
+        return response()->json(['ok' => true, 'estudiante' => $estudiante->load('programa')], 201);
     }
 }

@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
+            'coordinador.programa' => \App\Http\Middleware\EnsureCoordinadorTienePrograma::class,
         ]);
 
         $middleware->web(append: [

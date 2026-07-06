@@ -24,7 +24,7 @@ class CoordinadorCursoController extends Controller
     {
         return view('coordinador.cursos.index', [
             'docentes' => $this->docentes->listar(),
-            'programas' => ProgramaEstudio::orderBy('nombre')->get(),
+            'programas' => ProgramaEstudio::where('id_programa', auth()->user()->id_programa)->get(),
         ]);
     }
 
@@ -43,14 +43,22 @@ class CoordinadorCursoController extends Controller
 
     public function store(StoreCursoRequest $request): JsonResponse
     {
-        $curso = $this->cursos->crear($request->validated());
+        // El programa nunca se toma del cliente: un coordinador solo puede
+        // crear cursos dentro de su propio programa asignado.
+        $datos = [...$request->validated(), 'id_programa' => auth()->user()->id_programa];
+
+        $curso = $this->cursos->crear($datos);
 
         return response()->json(['ok' => true, 'curso' => $curso], 201);
     }
 
     public function update(UpdateCursoRequest $request, Curso $curso): JsonResponse
     {
-        $curso = $this->cursos->actualizar($curso, $request->validated());
+        // El scope global ya garantiza que $curso pertenece a su programa;
+        // se descarta ademas cualquier intento de mover el curso a otro.
+        $datos = collect($request->validated())->except('id_programa')->all();
+
+        $curso = $this->cursos->actualizar($curso, $datos);
 
         return response()->json(['ok' => true, 'curso' => $curso]);
     }

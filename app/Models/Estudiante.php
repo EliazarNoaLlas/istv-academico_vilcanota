@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CoordinadorProgramaDirectoScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,11 @@ class Estudiante extends Model
     protected $table = 'estudiantes';
     protected $primaryKey = 'id_estudiante';
     public $timestamps = false;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new CoordinadorProgramaDirectoScope());
+    }
 
     protected $fillable = [
         'codigo_estudiante',

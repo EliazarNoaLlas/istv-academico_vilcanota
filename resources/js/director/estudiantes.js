@@ -1,3 +1,5 @@
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
 const BADGE_ESTADO = {
     REGULAR: 'c-badge-green',
     OBSERVADO: 'c-badge-gold',
@@ -55,6 +57,66 @@ function cargar() {
         });
 }
 
+function abrirModal() {
+    document.getElementById('dir-estudiantes-form').reset();
+    limpiarErrores();
+    document.getElementById('dir-estudiantes-modal').classList.add('show');
+}
+
+function cerrarModal() {
+    document.getElementById('dir-estudiantes-modal').classList.remove('show');
+}
+
+function limpiarErrores() {
+    document.getElementById('dir-estudiantes-form-error').textContent = '';
+    document.querySelectorAll('#dir-estudiantes-form .dir-usuarios-field-error').forEach((el) => { el.textContent = ''; });
+    document.querySelectorAll('#dir-estudiantes-form .is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+}
+
+function mostrarErrores(errores) {
+    limpiarErrores();
+
+    if (!errores) {
+        document.getElementById('dir-estudiantes-form-error').textContent = 'No se pudo guardar el estudiante.';
+        return;
+    }
+
+    Object.entries(errores).forEach(([campo, mensajes]) => {
+        const contenedor = document.querySelector(`[data-error-for="${campo}"]`);
+        const mensaje = Array.isArray(mensajes) ? mensajes[0] : mensajes;
+
+        if (contenedor) {
+            contenedor.textContent = mensaje;
+            document.querySelector(`#dir-estudiantes-form [name="${campo}"]`)?.classList.add('is-invalid');
+        } else {
+            document.getElementById('dir-estudiantes-form-error').textContent = mensaje;
+        }
+    });
+}
+
+function enviarFormulario(event) {
+    event.preventDefault();
+    const datos = Object.fromEntries(new FormData(event.target));
+
+    fetch('/api/director/estudiantes', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify(datos),
+    })
+        .then(async (res) => {
+            const body = await res.json();
+            if (!res.ok) throw body;
+
+            return body;
+        })
+        .then(() => {
+            cerrarModal();
+            cargar();
+            alert('Estudiante registrado exitosamente.');
+        })
+        .catch((error) => mostrarErrores(error?.errors));
+}
+
 export function initDirectorEstudiantes() {
     const tbody = document.getElementById('dir-estudiantes-tbody');
     if (!tbody) return;
@@ -62,6 +124,10 @@ export function initDirectorEstudiantes() {
     cargar();
     document.getElementById('dir-estudiantes-filtro-programa')?.addEventListener('change', cargar);
     document.getElementById('dir-estudiantes-filtro-ciclo')?.addEventListener('change', cargar);
+
+    document.getElementById('dir-estudiantes-nuevo')?.addEventListener('click', abrirModal);
+    document.getElementById('dir-estudiantes-modal-cerrar')?.addEventListener('click', cerrarModal);
+    document.getElementById('dir-estudiantes-form')?.addEventListener('submit', enviarFormulario);
 }
 
 document.addEventListener('DOMContentLoaded', initDirectorEstudiantes);

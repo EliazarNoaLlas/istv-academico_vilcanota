@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portafolios;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Portafolios\UploadPortafolioRequest;
+use App\Models\Curso;
 use App\Models\PortafolioDocumento;
 use App\Services\Portafolios\PortafolioDocumentoService;
 use App\Services\Portafolios\PortafolioUploadService;
@@ -31,6 +32,14 @@ class PortafolioDocumentoController extends Controller
 
     public function store(UploadPortafolioRequest $request): JsonResponse
     {
+        // La regla "exists" del FormRequest consulta la tabla directamente y
+        // no respeta el scope de coordinador; se revalida aqui contra el
+        // modelo Eloquent para no permitir subir documentos a un curso de
+        // otro programa manipulando el id_curso enviado.
+        if (! Curso::find($request->validated('id_curso'))) {
+            return response()->json(['ok' => false, 'mensaje' => 'El curso indicado no existe o no pertenece a su programa.'], 404);
+        }
+
         try {
             $documento = $this->subida->subir(
                 $request->file('documento'),

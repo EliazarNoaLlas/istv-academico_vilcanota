@@ -70,6 +70,23 @@
                 </div>
             </div>
 
+            <div id="dir-usuarios-campo-coordinador" class="dir-usuarios-section dir-usuarios-docente-box" style="display:none">
+                <div class="dir-usuarios-section-title"><i class="bi bi-diagram-3"></i> Programa a cargo</div>
+                <div class="dir-usuarios-modal-grid">
+                    <div class="form-group full">
+                        <label>Programa de estudio *</label>
+                        <select name="id_programa">
+                            <option value="">Seleccione programa</option>
+                            @foreach ($programas as $programa)
+                                <option value="{{ $programa->id_programa }}">{{ $programa->nombre }}</option>
+                            @endforeach
+                        </select>
+                        <small class="dir-usuarios-hint">El coordinador queda a cargo de este programa de estudio.</small>
+                        <small class="dir-usuarios-field-error" data-error-for="id_programa"></small>
+                    </div>
+                </div>
+            </div>
+
             <div id="dir-usuarios-campos-docente" class="dir-usuarios-section dir-usuarios-docente-box" style="display:none">
                 <div class="dir-usuarios-section-title"><i class="bi bi-person-video3"></i> Perfil académico del docente</div>
 

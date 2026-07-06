@@ -75,7 +75,6 @@ Route::middleware(['auth', 'role:director'])->prefix('director')->name('director
     Route::get('/dashboard', [DirectorDashboardController::class, 'index'])->name('dashboard');
     Route::get('/usuarios', [DirectorUsuarioController::class, 'page'])->name('usuarios.index');
     Route::get('/docentes', [DirectorDocenteController::class, 'page'])->name('docentes.index');
-    Route::get('/programas', [DirectorProgramaController::class, 'page'])->name('programas.index');
     Route::get('/horarios', [DirectorHorarioController::class, 'page'])->name('horarios.index');
     Route::get('/estudiantes', [DirectorEstudianteController::class, 'page'])->name('estudiantes.index');
     Route::get('/cursos', [DirectorCursoController::class, 'page'])->name('cursos.index');
@@ -92,7 +91,7 @@ Route::middleware(['auth', 'role:jua'])->prefix('jua')->name('jua.')->group(func
     Route::get('/dashboard', [JuaDashboardController::class, 'index'])->name('dashboard');
 });
 
-Route::middleware(['auth', 'role:coordinador'])->prefix('coordinador')->name('coordinador.')->group(function () {
+Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix('coordinador')->name('coordinador.')->group(function () {
     Route::get('/dashboard', [CoordinadorDashboardController::class, 'index'])->name('dashboard');
     Route::get('/cursos', [CoordinadorCursoController::class, 'page'])->name('cursos.index');
     Route::get('/horarios', [CoordinadorHorarioController::class, 'page'])->name('horarios.index');
@@ -116,7 +115,7 @@ Route::middleware(['auth', 'role:docente'])->prefix('docente')->name('docente.')
 | Laravel ya validada en la Fase 4, en vez de instalar Sanctum/tokens que
 | esta fase no pidio.
 */
-Route::middleware(['auth', 'role:coordinador'])->prefix('api/coordinador')->group(function () {
+Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix('api/coordinador')->group(function () {
     Route::get('/data', [CoordinadorDataController::class, 'index']);
     Route::get('/cursos', [CoordinadorCursoController::class, 'index']);
     Route::post('/cursos', [CoordinadorCursoController::class, 'store']);
@@ -148,6 +147,7 @@ Route::middleware(['auth', 'role:director'])->prefix('api/director')->group(func
     Route::put('/usuarios/{usuario}', [DirectorUsuarioController::class, 'update']);
     Route::patch('/usuarios/{usuario}/estado', [DirectorUsuarioController::class, 'updateEstado']);
     Route::post('/usuarios/{usuario}/reset-password', [DirectorUsuarioController::class, 'resetPassword']);
+    Route::delete('/usuarios/{usuario}', [DirectorUsuarioController::class, 'destroy']);
 
     Route::get('/usuarios-solicitudes-password', [DirectorUsuarioController::class, 'solicitudesPassword']);
     Route::patch('/usuarios-solicitudes-password/{solicitud}/aprobar', [DirectorUsuarioController::class, 'aprobarSolicitudPassword']);
@@ -169,6 +169,7 @@ Route::middleware(['auth', 'role:director'])->prefix('api/director')->group(func
     Route::get('/horarios/ia/{idGeneracion}/estado', [DirectorHorarioController::class, 'estadoGeneracionIa']);
 
     Route::get('/estudiantes', [DirectorEstudianteController::class, 'index']);
+    Route::post('/estudiantes', [DirectorEstudianteController::class, 'store']);
     Route::get('/cursos', [DirectorCursoController::class, 'index']);
 
     Route::get('/configuracion', [DirectorConfiguracionController::class, 'index']);
@@ -201,7 +202,7 @@ Route::middleware(['auth', 'role:director,jua,coordinador,docente'])->prefix('ap
     Route::post('/notificaciones/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasLeidas']);
 });
 
-Route::middleware(['auth', 'role:coordinador,docente'])->prefix('api/portafolios')->group(function () {
+Route::middleware(['auth', 'role:coordinador,docente', 'coordinador.programa'])->prefix('api/portafolios')->group(function () {
     Route::get('/documentos', [PortafolioDocumentoController::class, 'index']);
     Route::post('/documentos', [PortafolioDocumentoController::class, 'store']);
     Route::delete('/documentos/{documento}', [PortafolioDocumentoController::class, 'destroy']);
@@ -209,7 +210,7 @@ Route::middleware(['auth', 'role:coordinador,docente'])->prefix('api/portafolios
     Route::post('/{documento}/analizar', [PortafolioIAController::class, 'analizar']);
 });
 
-Route::middleware(['auth', 'role:coordinador'])->prefix('api/portafolios')->group(function () {
+Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix('api/portafolios')->group(function () {
     Route::post('/{documento}/validar', [PortafolioRevisionController::class, 'validar']);
 });
 

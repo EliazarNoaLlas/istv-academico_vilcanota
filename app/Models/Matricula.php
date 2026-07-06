@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CoordinadorProgramaViaRelacionScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,11 @@ class Matricula extends Model
     protected $table = 'matriculas';
     protected $primaryKey = 'id_matricula';
     public $timestamps = false;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new CoordinadorProgramaViaRelacionScope('estudiante'));
+    }
 
     protected $fillable = [
         'id_estudiante',

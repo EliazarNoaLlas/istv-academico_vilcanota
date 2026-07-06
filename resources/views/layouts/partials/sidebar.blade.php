@@ -42,9 +42,6 @@
             <a href="{{ route('director.docentes.index') }}" class="nav-item {{ request()->routeIs('director.docentes.*') ? 'active' : '' }}">
                 <i class="bi bi-person-video3 ni"></i> Docentes
             </a>
-            <a href="{{ route('director.programas.index') }}" class="nav-item {{ request()->routeIs('director.programas.*') ? 'active' : '' }}">
-                <i class="bi bi-mortarboard ni"></i> Programas
-            </a>
             <a href="{{ route('director.horarios.index') }}" class="nav-item {{ request()->routeIs('director.horarios.*') ? 'active' : '' }}">
                 <i class="bi bi-calendar-week ni"></i> Horarios
             </a>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CoordinadorProgramaViaRelacionScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,6 +14,11 @@ class PortafolioDocumento extends Model
     protected $table = 'portafolio_documentos';
     protected $primaryKey = 'id_documento';
     public $timestamps = false;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new CoordinadorProgramaViaRelacionScope('portafolio'));
+    }
 
     protected $fillable = [
         'id_portafolio',

@@ -12,17 +12,33 @@ function renderRow(usuario) {
         : 'Pendiente';
     const esDirector = usuario.rol?.codigo === 'director';
 
-    const acciones = esDirector
-        ? '<span style="font-size:11px;color:var(--text-muted)">Gestionado fuera del sistema</span>'
-        : `
-            <button type="button" class="c-btn c-btn-outline c-btn-sm" data-edit="${usuario.id_usuario}">Editar</button>
-            <button type="button" class="c-btn c-btn-outline c-btn-sm" data-reset="${usuario.id_usuario}">Reset clave</button>
-            <select data-estado-select="${usuario.id_usuario}" class="input-inline" style="width:auto;display:inline-block">
-                <option value="ACTIVO" ${usuario.estado === 'ACTIVO' ? 'selected' : ''}>Activo</option>
-                <option value="INACTIVO" ${usuario.estado === 'INACTIVO' ? 'selected' : ''}>Inactivo</option>
-                <option value="BLOQUEADO" ${usuario.estado === 'BLOQUEADO' ? 'selected' : ''}>Bloqueado</option>
-            </select>
-        `;
+    const gestionadoFuera = '<span style="font-size:11px;color:var(--text-muted)">Gestionado fuera del sistema</span>';
+
+    const colEstado = esDirector ? gestionadoFuera : `
+        <select data-estado-select="${usuario.id_usuario}" class="input-inline" style="width:auto">
+            <option value="ACTIVO" ${usuario.estado === 'ACTIVO' ? 'selected' : ''}>Activo</option>
+            <option value="INACTIVO" ${usuario.estado === 'INACTIVO' ? 'selected' : ''}>Inactivo</option>
+            <option value="BLOQUEADO" ${usuario.estado === 'BLOQUEADO' ? 'selected' : ''}>Bloqueado</option>
+        </select>
+    `;
+
+    const colEditar = esDirector ? '' : `
+        <button type="button" class="c-btn-icon" data-edit="${usuario.id_usuario}" title="Editar">
+            <i class="bi bi-pencil-square"></i>
+        </button>
+    `;
+
+    const colReset = esDirector ? '' : `
+        <button type="button" class="c-btn-icon" data-reset="${usuario.id_usuario}" title="Reset clave">
+            <i class="bi bi-key"></i>
+        </button>
+    `;
+
+    const colEliminar = esDirector ? '' : `
+        <button type="button" class="c-btn-icon c-btn-icon-danger" data-delete="${usuario.id_usuario}" title="Eliminar">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
 
     return `
         <tr data-id="${usuario.id_usuario}">
@@ -39,7 +55,10 @@ function renderRow(usuario) {
             <td><span class="c-badge ${BADGE_ROL[usuario.rol?.codigo] ?? 'c-badge-navy'}">${usuario.rol?.nombre ?? '—'}</span></td>
             <td><span class="c-badge ${BADGE_ESTADO[usuario.estado] ?? 'c-badge-navy'}">${usuario.estado}</span></td>
             <td>${ultimoAcceso}</td>
-            <td>${acciones}</td>
+            <td>${colEstado}</td>
+            <td>${colEditar}</td>
+            <td>${colReset}</td>
+            <td>${colEliminar}</td>
         </tr>
     `;
 }
@@ -67,12 +86,12 @@ function cargarUsuarios() {
 
             tbody.innerHTML = usuariosCache.length
                 ? usuariosCache.map(renderRow).join('')
-                : '<tr><td colspan="6" class="c-table-empty">No hay usuarios para este filtro.</td></tr>';
+                : '<tr><td colspan="9" class="c-table-empty">No hay usuarios para este filtro.</td></tr>';
 
             wireRowActions();
         })
         .catch((error) => {
-            tbody.innerHTML = '<tr><td colspan="6" class="c-table-empty">No se pudo cargar la lista de usuarios.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="c-table-empty">No se pudo cargar la lista de usuarios.</td></tr>';
             console.error(error);
         });
 }
@@ -87,6 +106,10 @@ function wireRowActions() {
 
     document.querySelectorAll('[data-reset]').forEach((btn) => {
         btn.addEventListener('click', () => resetPassword(btn.dataset.reset));
+    });
+
+    document.querySelectorAll('[data-delete]').forEach((btn) => {
+        btn.addEventListener('click', () => eliminarUsuario(btn.dataset.delete));
     });
 
     document.querySelectorAll('[data-estado-select]').forEach((select) => {
@@ -113,6 +136,26 @@ function resetPassword(idUsuario) {
         .then((res) => res.json())
         .then((data) => alert(data.mensaje ?? 'Contraseña restablecida.'))
         .catch((error) => console.error(error));
+}
+
+function eliminarUsuario(idUsuario) {
+    if (!confirm('¿Eliminar esta cuenta de usuario? Esta acción no se puede deshacer desde la interfaz.')) return;
+
+    fetch(`/api/director/usuarios/${idUsuario}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    })
+        .then(async (res) => {
+            const body = await res.json();
+            if (!res.ok) throw body;
+
+            return body;
+        })
+        .then(() => {
+            cargarUsuarios();
+            alert('Usuario eliminado.');
+        })
+        .catch((error) => alert(error?.mensaje ?? 'No se pudo eliminar el usuario.'));
 }
 
 function cambiarEstado(idUsuario, estado, motivo) {
@@ -146,17 +189,17 @@ function aplicarModoProgramas() {
     });
 }
 
-/** El perfil academico solo se completa al crear: editar no lo modifica todavia. */
+/**
+ * El perfil academico del docente (especialidad, tipo, programas[]) solo se
+ * completa al crear: editar no lo modifica todavia. El programa asignado al
+ * coordinador si es editable, porque el Director necesita poder reasignarlo.
+ */
 function actualizarVisibilidadDocente() {
-    if (usuarioEnEdicion) {
-        document.getElementById('dir-usuarios-campos-docente').style.display = 'none';
-
-        return;
-    }
-
     const select = document.getElementById('dir-usuarios-select-rol');
     const codigo = select?.selectedOptions[0]?.dataset.codigo;
-    document.getElementById('dir-usuarios-campos-docente').style.display = codigo === 'docente' ? 'block' : 'none';
+
+    document.getElementById('dir-usuarios-campos-docente').style.display = (!usuarioEnEdicion && codigo === 'docente') ? 'block' : 'none';
+    document.getElementById('dir-usuarios-campo-coordinador').style.display = codigo === 'coordinador' ? 'block' : 'none';
 }
 
 function abrirModal(usuario = null) {
@@ -188,8 +231,11 @@ function construirPayload(form) {
     const formData = new FormData(form);
     const datos = {};
 
+    const coordinadorVisible = document.getElementById('dir-usuarios-campo-coordinador').style.display !== 'none';
+
     formData.forEach((valor, clave) => {
         if (clave === 'programas[]') return;
+        if (clave === 'id_programa' && !coordinadorVisible) return;
         datos[clave] = valor;
     });
 
@@ -252,7 +298,7 @@ function enviarFormulario(event) {
         .then(() => {
             cerrarModal();
             cargarUsuarios();
-            alert(usuarioEnEdicion ? 'Usuario actualizado.' : 'Usuario creado. Se envió la contraseña temporal a su correo institucional.');
+            alert(usuarioEnEdicion ? 'Usuario actualizado.' : 'Usuario registrado exitosamente. Se envió la contraseña temporal a su correo institucional.');
         })
         .catch((error) => mostrarErrores(error?.errors));
 }

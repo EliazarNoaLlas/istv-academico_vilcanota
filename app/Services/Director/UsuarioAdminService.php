@@ -123,6 +123,13 @@ class UsuarioAdminService
         return $usuario->fresh('rol');
     }
 
+    public function eliminar(User $usuario, User $actorPor): void
+    {
+        $this->auditar($actorPor, 'USUARIO_ELIMINADO', $usuario, 'Cuenta eliminada por Dirección');
+
+        $usuario->delete();
+    }
+
     public function resetPassword(User $usuario, User $actorPor): void
     {
         $passwordTemporal = Str::password(12);

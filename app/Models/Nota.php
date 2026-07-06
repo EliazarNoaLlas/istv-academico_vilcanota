@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CoordinadorProgramaViaRelacionScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -9,6 +10,11 @@ class Nota extends Model
 {
     protected $table = 'notas';
     protected $primaryKey = 'id_nota';
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new CoordinadorProgramaViaRelacionScope('matriculaCurso'));
+    }
 
     const CREATED_AT = 'fecha_registro';
     const UPDATED_AT = 'fecha_actualizacion';

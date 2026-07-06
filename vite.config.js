@@ -20,7 +20,6 @@ export default defineConfig({
                 'resources/js/director/dashboard.js',
                 'resources/js/director/usuarios.js',
                 'resources/js/director/docentes.js',
-                'resources/js/director/programas.js',
                 'resources/js/director/horarios.js',
                 'resources/js/director/estudiantes.js',
                 'resources/js/director/cursos.js',

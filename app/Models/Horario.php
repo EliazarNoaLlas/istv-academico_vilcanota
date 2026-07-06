@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\CoordinadorProgramaViaRelacionScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,16 @@ class Horario extends Model
     protected $table = 'horarios';
     protected $primaryKey = 'id_horario';
     public $timestamps = false;
+
+    /**
+     * Se filtra via curso() (fuente de verdad) y no con la columna id_programa
+     * propia (denormalizada al crear el horario) para no depender de que
+     * quede sincronizada si el curso cambia de programa.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new CoordinadorProgramaViaRelacionScope('curso'));
+    }
 
     protected $fillable = [
         'id_curso',

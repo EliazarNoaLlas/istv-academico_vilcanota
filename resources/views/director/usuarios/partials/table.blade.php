@@ -7,11 +7,14 @@
                 <th>Rol</th>
                 <th>Estado</th>
                 <th>Último acceso</th>
-                <th>Acciones</th>
+                <th>Cambiar estado</th>
+                <th>Editar</th>
+                <th>Reset clave</th>
+                <th>Eliminar</th>
             </tr>
         </thead>
         <tbody id="dir-usuarios-tbody">
-            <tr><td colspan="6" class="c-table-empty">Cargando usuarios…</td></tr>
+            <tr><td colspan="9" class="c-table-empty">Cargando usuarios…</td></tr>
         </tbody>
     </table>
 </div>

@@ -56,3 +56,34 @@
     padding: 5px 12px;
     font-size: 12px;
 }
+
+.c-btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all .15s;
+    font-size: 14px;
+}
+
+.c-btn-icon:hover {
+    border-color: var(--navy);
+    color: var(--navy);
+}
+
+.c-btn-icon-danger {
+    color: var(--red-alert);
+}
+
+.c-btn-icon-danger:hover {
+    border-color: var(--red-alert);
+    color: var(--red-alert);
+    background: rgba(220, 53, 69, .08);
+}

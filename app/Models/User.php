@@ -26,6 +26,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'id_rol',
+        'id_programa',
         'usuario',
         'correo',
         'nombres',
@@ -73,6 +74,11 @@ class User extends Authenticatable
     public function docente(): HasOne
     {
         return $this->hasOne(Docente::class, 'id_usuario');
+    }
+
+    public function programa(): BelongsTo
+    {
+        return $this->belongsTo(ProgramaEstudio::class, 'id_programa');
     }
 
     public function notificaciones(): HasMany

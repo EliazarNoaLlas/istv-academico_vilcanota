@@ -42,6 +42,15 @@ class HorarioPersistenceService
 
                 foreach ($bloques as $bloque) {
                     $curso = $cursos->get($bloque['id_curso']);
+
+                    // Si el curso no se pudo resolver (no existe o esta fuera del
+                    // alcance del programa del coordinador autenticado, filtrado
+                    // por el scope global de Curso), se descarta el bloque en vez
+                    // de crear un horario huerfano referenciando un id_curso ajeno.
+                    if (! $curso) {
+                        continue;
+                    }
+
                     $aulaTexto = $bloque['aula'] ?? null;
                     $aula = $aulaTexto ? ($aulasPorTexto[mb_strtolower($aulaTexto)] ?? null) : null;
 

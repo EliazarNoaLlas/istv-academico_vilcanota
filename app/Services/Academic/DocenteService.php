@@ -23,13 +23,13 @@ class DocenteService
     {
         return Docente::query()
             ->where('estado_academico', 'ACTIVO')
-            ->withCount('cursos')
             ->with(['cursos:id_curso,id_docente,total_horas', 'usuario'])
             ->join('usuarios', 'usuarios.id_usuario', '=', 'docentes.id_usuario')
             ->orderBy('usuarios.nombres')
             ->select('docentes.*')
             ->get()
             ->map(function ($docente) {
+                $docente->cursos_count = $docente->cursos->count();
                 $docente->carga_horaria = $docente->cursos->sum('total_horas');
 
                 return $docente;

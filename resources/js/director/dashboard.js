@@ -112,6 +112,37 @@ function renderAlertas(alertas) {
     `).join('');
 }
 
+const PROGRAMA_COLORES = ['teal', 'gold', 'navy', 'red'];
+
+function renderProgramas(programas) {
+    const root = document.getElementById('dir-dashboard-programas');
+    if (!root) return;
+
+    root.innerHTML = programas.length
+        ? programas.map((programa, indice) => `
+            <div class="c-stat-card ${PROGRAMA_COLORES[indice % PROGRAMA_COLORES.length]}">
+                <i class="bi bi-mortarboard c-stat-icon"></i>
+                <div class="c-stat-label">${programa.nombre}</div>
+                <div class="c-stat-value">${programa.estudiantes_count}</div>
+                <div class="c-stat-sub">estudiantes · ${programa.cursos_count} cursos · ${programa.duracion_ciclos ?? '—'} ciclos</div>
+            </div>
+        `).join('')
+        : '<p style="color:var(--text-muted);font-size:13px">No hay programas registrados.</p>';
+}
+
+function cargarProgramas() {
+    const root = document.getElementById('dir-dashboard-programas');
+    if (!root) return;
+
+    fetch('/api/director/programas', { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => renderProgramas(data.programas ?? []))
+        .catch((error) => {
+            root.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No se pudo cargar la información de programas.</p>';
+            console.error(error);
+        });
+}
+
 function renderActividad(actividad) {
     const root = document.getElementById('dir-dashboard-actividad');
 
@@ -132,6 +163,8 @@ function renderActividad(actividad) {
 export function initDirectorDashboard() {
     const root = document.getElementById('dir-dashboard-kpis');
     if (!root) return;
+
+    cargarProgramas();
 
     fetch('/api/director/dashboard', { headers: { Accept: 'application/json' } })
         .then((res) => {

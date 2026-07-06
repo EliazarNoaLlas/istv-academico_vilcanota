@@ -87,6 +87,17 @@ class DirectorUsuarioController extends Controller
         return response()->json(['ok' => true, 'usuario' => $usuario]);
     }
 
+    public function destroy(Request $request, User $usuario): JsonResponse
+    {
+        if ($usuario->rol?->codigo === 'director') {
+            return response()->json(['ok' => false, 'mensaje' => 'No está permitido eliminar cuentas con rol Director desde este módulo.'], 403);
+        }
+
+        $this->usuarios->eliminar($usuario, $request->user());
+
+        return response()->json(['ok' => true]);
+    }
+
     public function resetPassword(ResetUsuarioPasswordRequest $request, User $usuario): JsonResponse
     {
         $this->usuarios->resetPassword($usuario, $request->user());

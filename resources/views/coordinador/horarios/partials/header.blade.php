@@ -3,7 +3,7 @@
     <div>
         <small>COORDINADOR ACADÉMICO</small>
         <h2>Horarios Académicos</h2>
-        <p>Programa: <strong id="coord-horarios-programa-actual">Todos los programas</strong> · Periodo: <strong>{{ $periodos->firstWhere('estado', 'ACTIVO')?->codigo ?? '—' }}</strong></p>
+        <p>Programa: <strong id="coord-horarios-programa-actual">{{ $programas[0]->nombre ?? '—' }}</strong> · Periodo: <strong>{{ $periodos->firstWhere('estado', 'ACTIVO')?->codigo ?? '—' }}</strong></p>
     </div>
     <div class="coord-horarios-actions">
         <button type="button" id="coord-horarios-nuevo" class="c-btn c-btn-primary c-btn-sm">

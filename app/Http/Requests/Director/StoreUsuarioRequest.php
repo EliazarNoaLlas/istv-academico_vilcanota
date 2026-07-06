@@ -16,6 +16,7 @@ class StoreUsuarioRequest extends FormRequest
     public function rules(): array
     {
         $esDocente = $this->rolSeleccionado()?->codigo === 'docente';
+        $esCoordinador = $this->rolSeleccionado()?->codigo === 'coordinador';
         $esGeneral = $this->input('tipo_docente') === 'GENERAL';
 
         return [
@@ -36,6 +37,8 @@ class StoreUsuarioRequest extends FormRequest
                 $esGeneral ? 'min:1' : 'size:1',
             ],
             'programas.*' => ['integer', Rule::exists('programas_estudio', 'id_programa')],
+
+            'id_programa' => [$esCoordinador ? 'required' : 'nullable', Rule::exists('programas_estudio', 'id_programa')],
         ];
     }
 

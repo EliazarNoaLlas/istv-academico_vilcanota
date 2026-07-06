@@ -17,6 +17,27 @@ class EstudianteService
             ->get();
     }
 
+    public function crear(array $datos): Estudiante
+    {
+        return Estudiante::create([
+            ...$datos,
+            'codigo_estudiante' => $this->generarCodigoEstudiante(),
+            'estado' => 'REGULAR',
+        ]);
+    }
+
+    /** Genera codigo_estudiante con patron EST### a partir del ultimo correlativo usado (incluye eliminados, para no reutilizar codigos). */
+    private function generarCodigoEstudiante(): string
+    {
+        $ultimoNumero = Estudiante::withTrashed()
+            ->where('codigo_estudiante', 'like', 'EST%')
+            ->get()
+            ->map(fn ($e) => (int) preg_replace('/\D/', '', $e->codigo_estudiante))
+            ->max() ?? 0;
+
+        return 'EST'.str_pad((string) ($ultimoNumero + 1), 3, '0', STR_PAD_LEFT);
+    }
+
     /** Estudiantes con promedio real calculado desde notas, para el panel de coordinador. */
     public function listarConPromedio(?int $idPrograma = null, ?string $ciclo = null): Collection
     {
