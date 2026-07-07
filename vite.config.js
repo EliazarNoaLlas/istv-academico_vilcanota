@@ -11,6 +11,7 @@ export default defineConfig({
                 'resources/js/coordinador/cursos.js',
                 'resources/js/coordinador/horarios.js',
                 'resources/js/coordinador/portafolio.js',
+                'resources/js/coordinador/analytics.js',
                 'resources/js/coordinador/docentes.js',
                 'resources/js/coordinador/estudiantes.js',
                 'resources/js/coordinador/notas.js',

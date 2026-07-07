@@ -97,7 +97,7 @@
                         <div class="coord-portafolio-toolbar">
                             <select id="coord-mi-portafolio-curso" data-id-docente="{{ $miDocente->id_docente }}" data-id-periodo="{{ $periodoActivo?->id_periodo }}">
                                 @forelse ($miDocente->cursos as $curso)
-                                    <option value="{{ $curso->id_curso }}">{{ $curso->nombre_curso }} ({{ $curso->semestre }})</option>
+                                    <option value="{{ $curso->id_curso }}" data-semestre="{{ $curso->semestre }}">{{ $curso->nombre_curso }} ({{ $curso->semestre }})</option>
                                 @empty
                                     <option value="">Aún no tienes cursos asignados</option>
                                 @endforelse
@@ -109,7 +109,35 @@
 
                 <div class="coord-mi-portafolio-grid" id="coord-mi-portafolio-grid"></div>
 
-                <input type="file" id="coord-mi-portafolio-input-archivo" style="display:none">
+                <div class="coord-portafolio-modal-backdrop" id="coord-mi-portafolio-upload-modal">
+                    <div class="coord-portafolio-modal">
+                        <h2><i class="bi bi-cloud-arrow-up"></i> Subir documento</h2>
+
+                        <div class="form-group">
+                            <label>Documento</label>
+                            <input type="file" id="coord-mi-portafolio-upload-archivo">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Curso asignado</label>
+                            <select id="coord-mi-portafolio-upload-curso"></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Semestre asignado</label>
+                            <select id="coord-mi-portafolio-upload-semestre" disabled></select>
+                        </div>
+
+                        <div class="coord-portafolio-form-error" id="coord-mi-portafolio-upload-error"></div>
+
+                        <div class="coord-portafolio-modal-actions">
+                            <button type="button" class="c-btn c-btn-outline" id="coord-mi-portafolio-upload-cancelar">Cancelar</button>
+                            <button type="button" class="c-btn c-btn-primary" id="coord-mi-portafolio-upload-confirmar">
+                                <i class="bi bi-cloud-upload"></i> Subir archivo
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="c-panel coord-sesiones-manager" id="coord-sesiones-manager" style="display:none" data-id-docente="{{ $miDocente->id_docente }}">
                     <div class="c-panel-header">
@@ -226,14 +254,17 @@
                                     <div>Curso: <strong id="coord-asistencia-curso-actual"></strong></div>
                                 </div>
 
-                                <label class="coord-sesiones-hint" style="display:block;font-weight:600;color:var(--navy)">Fecha de sesión</label>
-                                <input type="date" id="coord-asistencia-fecha" class="input-inline" style="width:100%;margin-bottom:10px">
-                                <button type="button" class="c-btn c-btn-primary" id="coord-asistencia-cargar-sesion" disabled>
-                                    <i class="bi bi-calendar-plus"></i> Cargar sesión
+                                <label class="coord-sesiones-hint" style="display:block;font-weight:600;color:var(--navy)">Mes</label>
+                                <div class="coord-asistencia-mes-nav">
+                                    <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-asistencia-mes-anterior"><i class="bi bi-chevron-left"></i></button>
+                                    <span class="coord-asistencia-mes-actual" id="coord-asistencia-mes-actual">—</span>
+                                    <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-asistencia-mes-siguiente"><i class="bi bi-chevron-right"></i></button>
+                                </div>
+
+                                <button type="button" class="c-btn c-btn-primary" id="coord-asistencia-guardar" disabled>
+                                    <i class="bi bi-save"></i> Guardar cambios
                                 </button>
-                                <button type="button" class="c-btn c-btn-outline" id="coord-asistencia-guardar" disabled>
-                                    <i class="bi bi-save"></i> Guardar asistencia
-                                </button>
+                                <p class="coord-asistencia-pendientes" id="coord-asistencia-pendientes">Sin cambios pendientes</p>
                                 <div class="coord-portafolio-form-error" id="coord-asistencia-error"></div>
                             </div>
 
@@ -245,9 +276,18 @@
 
                             <div class="coord-sesiones-col coord-sesiones-col-lista">
                                 <div class="coord-sesiones-lista-header">
-                                    <h4 id="coord-asistencia-lista-titulo"><i class="bi bi-people"></i> Seleccione un curso y fecha</h4>
+                                    <h4 id="coord-asistencia-lista-titulo"><i class="bi bi-table"></i> Seleccione un curso</h4>
                                 </div>
-                                <div id="coord-asistencia-lista-estudiantes"></div>
+                                <div class="coord-asistencia-leyenda">
+                                    <span><i style="background:rgba(26,191,160,.5)"></i> Presente (clic para cambiar)</span>
+                                    <span><i style="background:rgba(212,160,23,.5)"></i> Tardanza</span>
+                                    <span><i style="background:rgba(224,80,80,.5)"></i> Ausente</span>
+                                    <span><i style="background:rgba(11,28,58,.3)"></i> Justificado</span>
+                                    <span><i style="background:var(--surface);border:1px solid var(--border)"></i> Sin sesión (clic para tomarla)</span>
+                                </div>
+                                <div class="coord-asistencia-matriz-scroll">
+                                    <table class="coord-asistencia-matriz" id="coord-asistencia-tabla"></table>
+                                </div>
                             </div>
                         </div>
                     </div>

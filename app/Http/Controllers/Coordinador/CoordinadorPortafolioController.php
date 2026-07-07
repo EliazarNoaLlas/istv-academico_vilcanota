@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Coordinador;
 
 use App\Http\Controllers\Controller;
-use App\Models\AsistenciaSesion;
 use App\Models\Curso;
 use App\Models\Docente;
 use App\Models\MatriculaCurso;
@@ -112,50 +111,28 @@ class CoordinadorPortafolioController extends Controller
         return response()->json(['ok' => true, 'nota' => $nota]);
     }
 
-    public function sesionesAsistencia(Request $request): JsonResponse
+    /** Matriz estudiantes x dias del mes para marcar asistencia sin tener que "cargar" una sesion primero. */
+    public function matrizAsistencia(Request $request): JsonResponse
     {
         $idCurso = (int) $request->query('id_curso');
+        $mes = (string) $request->query('mes', now()->format('Y-m'));
         [$miDocente] = $this->miDocenteDeCurso($idCurso);
 
-        return response()->json(['ok' => true, 'sesiones' => $this->asistencia->sesionesDeCurso($idCurso, $miDocente->id_docente)]);
+        return response()->json(['ok' => true] + $this->asistencia->matrizDeCurso($idCurso, $miDocente->id_docente, $mes));
     }
 
-    public function crearSesionAsistencia(Request $request): JsonResponse
+    public function guardarMatrizAsistencia(Request $request): JsonResponse
     {
         $datos = $request->validate([
             'id_curso' => ['required', 'integer'],
-            'fecha_sesion' => ['required', 'date'],
-            'tema' => ['nullable', 'string', 'max:180'],
+            'cambios' => ['required', 'array', 'min:1'],
+            'cambios.*' => ['array'],
+            'cambios.*.*.id_estudiante' => ['required', 'integer'],
+            'cambios.*.*.estado' => ['required', 'string', 'in:PRESENTE,TARDANZA,AUSENTE,JUSTIFICADO'],
         ]);
         [$miDocente] = $this->miDocenteDeCurso($datos['id_curso']);
 
-        $sesion = $this->asistencia->crearSesion($datos['id_curso'], $miDocente->id_docente, $datos['fecha_sesion'], $datos['tema'] ?? null);
-
-        return response()->json(['ok' => true, 'sesion' => $sesion], 201);
-    }
-
-    public function estudiantesAsistencia(Request $request): JsonResponse
-    {
-        $idCurso = (int) $request->query('id_curso');
-        $idSesion = (int) $request->query('id_sesion');
-        $this->miDocenteDeCurso($idCurso);
-
-        return response()->json(['ok' => true, 'estudiantes' => $this->asistencia->estudiantesDeSesion($idCurso, $idSesion)]);
-    }
-
-    public function guardarAsistencia(Request $request): JsonResponse
-    {
-        $datos = $request->validate([
-            'id_sesion' => ['required', 'integer', 'exists:asistencia_sesiones,id_sesion'],
-            'registros' => ['required', 'array'],
-            'registros.*.id_estudiante' => ['required', 'integer'],
-            'registros.*.estado' => ['required', 'string', 'in:PRESENTE,TARDANZA,AUSENTE,JUSTIFICADO'],
-        ]);
-
-        $sesion = AsistenciaSesion::findOrFail($datos['id_sesion']);
-        $this->miDocenteDeCurso($sesion->id_curso);
-
-        $this->asistencia->guardarAsistencia($datos['id_sesion'], $datos['registros']);
+        $this->asistencia->guardarCambiosMatriz($datos['id_curso'], $miDocente->id_docente, $datos['cambios']);
 
         return response()->json(['ok' => true]);
     }

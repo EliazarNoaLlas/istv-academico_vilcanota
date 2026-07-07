@@ -80,6 +80,9 @@
             <a href="{{ route('coordinador.horarios.index') }}" class="nav-item {{ request()->routeIs('coordinador.horarios.*') ? 'active' : '' }}">
                 <i class="bi bi-calendar-week ni"></i> Horarios
             </a>
+            <a href="{{ route('coordinador.analitica.index') }}" class="nav-item {{ request()->routeIs('coordinador.analitica.*') ? 'active' : '' }}">
+                <i class="bi bi-graph-up ni"></i> Analítica
+            </a>
             <a href="{{ route('coordinador.portafolio.index') }}" class="nav-item {{ request()->routeIs('coordinador.portafolio.*') ? 'active' : '' }}">
                 <i class="bi bi-folder2-open ni"></i> Portafolio
             </a>

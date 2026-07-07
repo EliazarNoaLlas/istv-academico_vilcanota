@@ -324,20 +324,26 @@ function renderCardAsistencia(idCurso, curso, periodo) {
 }
 
 function actualizarConteoAsistencia(idCurso) {
-    fetch(`/api/coordinador/portafolios/asistencia/sesiones?id_curso=${idCurso}`, { headers: { Accept: 'application/json' } })
+    const ahora = new Date();
+    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+
+    fetch(`/api/coordinador/portafolios/asistencia?id_curso=${idCurso}&mes=${mes}`, { headers: { Accept: 'application/json' } })
         .then((res) => res.json())
         .then((data) => {
-            const sesiones = data.sesiones ?? [];
+            const dias = data.dias ?? [];
+            const estudiantes = data.estudiantes ?? [];
             const detalle = document.getElementById('asistencia-card-detalle');
             const badge = document.getElementById('asistencia-card-badge');
             if (!detalle || !badge) return;
 
-            if (!sesiones.length) {
-                detalle.textContent = 'Pendiente de ingresar · Requiere asistencia';
+            const diasTomados = dias.filter((dia) => estudiantes.some((e) => e.asistencias[dia] !== null)).length;
+
+            if (!diasTomados) {
+                detalle.textContent = 'Pendiente de ingresar · Requiere asistencia este mes';
                 badge.innerHTML = '<span class="c-badge c-badge-red"><i class="bi bi-exclamation-triangle-fill"></i> Pendiente</span>';
             } else {
-                detalle.textContent = `Última sesión ${formatearFecha(sesiones[0].fecha_sesion)}`;
-                badge.innerHTML = `<span class="c-badge c-badge-green"><i class="bi bi-check-circle-fill"></i> ${sesiones.length} ${sesiones.length === 1 ? 'sesión' : 'sesiones'}</span>`;
+                detalle.textContent = `${diasTomados} día(s) registrados este mes`;
+                badge.innerHTML = `<span class="c-badge c-badge-green"><i class="bi bi-check-circle-fill"></i> ${diasTomados} ${diasTomados === 1 ? 'día' : 'días'}</span>`;
             }
         })
         .catch(() => {
@@ -797,19 +803,56 @@ function guardarNotaFila(idMatriculaCurso) {
         });
 }
 
-// --- Gestor de "Asistencia" (3 columnas: acciones / cursos / estudiantes) ---
+// --- Gestor de "Asistencia": matriz estudiantes x dias del mes, sin subir archivos ni "cargar sesion" antes de marcar. ---
 let asistenciaCursos = [];
 let asistenciaCursoActivo = null;
-let asistenciaSesionActiva = null;
+let asistenciaMesActivo = null;
+let asistenciaCambiosPendientes = {};
+
+const CICLO_ESTADOS_ASISTENCIA = ['PRESENTE', 'TARDANZA', 'AUSENTE', 'JUSTIFICADO'];
+const ABREV_ESTADO_ASISTENCIA = { PRESENTE: 'P', TARDANZA: 'T', AUSENTE: 'A', JUSTIFICADO: 'J' };
+const NOMBRES_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const NOMBRES_DIA_CORTO = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
+
+function hayPendientesAsistencia() {
+    return Object.values(asistenciaCambiosPendientes).some((dia) => Object.keys(dia).length > 0);
+}
+
+function confirmarDescarteAsistencia() {
+    return !hayPendientesAsistencia() || confirm('Tienes cambios de asistencia sin guardar. ¿Deseas descartarlos?');
+}
+
+function etiquetaMesAsistencia(mesIso) {
+    const [anio, mes] = mesIso.split('-').map(Number);
+
+    return `${NOMBRES_MES[mes - 1]} ${anio}`;
+}
+
+function nombreDiaCortoAsistencia(fechaIso) {
+    const [anio, mes, dia] = fechaIso.split('-').map(Number);
+
+    return NOMBRES_DIA_CORTO[new Date(anio, mes - 1, dia).getDay()];
+}
+
+function siguienteEstadoAsistencia(estadoActual) {
+    if (!estadoActual) return 'PRESENTE';
+    const indice = CICLO_ESTADOS_ASISTENCIA.indexOf(estadoActual);
+
+    return CICLO_ESTADOS_ASISTENCIA[(indice + 1) % CICLO_ESTADOS_ASISTENCIA.length];
+}
 
 function abrirGestorAsistencia() {
     document.getElementById('coord-mi-portafolio-grid').style.display = 'none';
     document.getElementById('coord-asistencia-manager').style.display = 'block';
-    document.getElementById('coord-asistencia-fecha').value = new Date().toISOString().slice(0, 10);
+
+    const ahora = new Date();
+    asistenciaMesActivo = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
     cargarCursosParaAsistencia();
 }
 
 function cerrarGestorAsistencia() {
+    if (!confirmarDescarteAsistencia()) return;
+
     document.getElementById('coord-asistencia-manager').style.display = 'none';
     document.getElementById('coord-mi-portafolio-grid').style.display = 'grid';
 }
@@ -820,11 +863,14 @@ function cargarCursosParaAsistencia() {
         .map((o) => ({ id_curso: o.value, nombre_curso: o.textContent }));
 
     asistenciaCursoActivo = null;
-    asistenciaSesionActiva = null;
+    asistenciaCambiosPendientes = {};
     renderListaCursosAsistencia();
-    renderListaEstudiantesAsistencia();
 
-    if (asistenciaCursos.length) seleccionarCursoAsistencia(asistenciaCursos[0].id_curso);
+    if (asistenciaCursos.length) {
+        seleccionarCursoAsistencia(asistenciaCursos[0].id_curso);
+    } else {
+        cargarMatrizAsistencia();
+    }
 }
 
 function renderListaCursosAsistencia() {
@@ -840,104 +886,142 @@ function renderListaCursosAsistencia() {
         : '<p class="coord-portafolio-empty">Aún no tienes cursos asignados.</p>';
 
     root.querySelectorAll('[data-id-curso]').forEach((el) => {
-        el.addEventListener('click', () => seleccionarCursoAsistencia(el.dataset.idCurso));
+        el.addEventListener('click', () => {
+            if (el.dataset.idCurso === asistenciaCursoActivo) return;
+            if (!confirmarDescarteAsistencia()) return;
+
+            seleccionarCursoAsistencia(el.dataset.idCurso);
+        });
     });
 }
 
 function seleccionarCursoAsistencia(idCurso) {
     asistenciaCursoActivo = idCurso;
-    asistenciaSesionActiva = null;
+    asistenciaCambiosPendientes = {};
     const curso = asistenciaCursos.find((c) => c.id_curso === idCurso);
 
     document.getElementById('coord-asistencia-seleccionado').style.display = 'block';
     document.getElementById('coord-asistencia-curso-actual').textContent = curso?.nombre_curso ?? '';
-    document.getElementById('coord-asistencia-cargar-sesion').disabled = false;
-    document.getElementById('coord-asistencia-guardar').disabled = true;
 
     renderListaCursosAsistencia();
-    renderListaEstudiantesAsistencia();
+    cargarMatrizAsistencia();
 }
 
-function cargarOCrearSesionAsistencia() {
-    const fecha = document.getElementById('coord-asistencia-fecha').value;
-    const errorBox = document.getElementById('coord-asistencia-error');
-    errorBox.textContent = '';
+function cambiarMesAsistencia(delta) {
+    if (!confirmarDescarteAsistencia()) return;
 
-    if (!asistenciaCursoActivo || !fecha) return;
-
-    fetch('/api/coordinador/portafolios/asistencia/sesiones', {
-        method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ id_curso: asistenciaCursoActivo, fecha_sesion: fecha }),
-    })
-        .then(async (res) => {
-            const body = await res.json();
-            if (!res.ok) throw body;
-
-            return body;
-        })
-        .then((body) => {
-            asistenciaSesionActiva = body.sesion.id_sesion;
-            document.getElementById('coord-asistencia-guardar').disabled = false;
-            renderListaEstudiantesAsistencia();
-        })
-        .catch((error) => {
-            errorBox.textContent = error?.mensaje ?? 'No se pudo cargar la sesión.';
-        });
+    const [anio, mes] = asistenciaMesActivo.split('-').map(Number);
+    const fecha = new Date(anio, mes - 1 + delta, 1);
+    asistenciaMesActivo = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+    cargarMatrizAsistencia();
 }
 
-const ESTADOS_ASISTENCIA = ['PRESENTE', 'TARDANZA', 'AUSENTE', 'JUSTIFICADO'];
+function actualizarIndicadorPendientesAsistencia() {
+    const total = Object.values(asistenciaCambiosPendientes).reduce((acc, dia) => acc + Object.keys(dia).length, 0);
+    const texto = document.getElementById('coord-asistencia-pendientes');
+    const boton = document.getElementById('coord-asistencia-guardar');
 
-function renderListaEstudiantesAsistencia() {
+    boton.disabled = total === 0;
+    texto.textContent = total ? `${total} cambio(s) sin guardar` : 'Sin cambios pendientes';
+    texto.classList.toggle('hay-cambios', total > 0);
+}
+
+function cargarMatrizAsistencia() {
     const titulo = document.getElementById('coord-asistencia-lista-titulo');
-    const root = document.getElementById('coord-asistencia-lista-estudiantes');
+    const tabla = document.getElementById('coord-asistencia-tabla');
     const curso = asistenciaCursos.find((c) => c.id_curso === asistenciaCursoActivo);
 
-    if (!curso || !asistenciaSesionActiva) {
-        titulo.innerHTML = '<i class="bi bi-people"></i> Seleccione un curso y cargue la sesión';
-        root.innerHTML = '';
+    document.getElementById('coord-asistencia-mes-actual').textContent = etiquetaMesAsistencia(asistenciaMesActivo);
+    asistenciaCambiosPendientes = {};
+    actualizarIndicadorPendientesAsistencia();
+
+    if (!curso) {
+        titulo.innerHTML = '<i class="bi bi-table"></i> Seleccione un curso';
+        tabla.innerHTML = '';
 
         return;
     }
 
-    titulo.innerHTML = `${curso.nombre_curso}<br><small style="font-weight:400;color:var(--text-muted)">${document.getElementById('coord-asistencia-fecha').value}</small>`;
-    root.innerHTML = '<div class="coord-sesiones-lista-vacia">Cargando…</div>';
+    titulo.innerHTML = curso.nombre_curso;
+    tabla.innerHTML = '<caption class="coord-sesiones-lista-vacia">Cargando…</caption>';
 
-    fetch(`/api/coordinador/portafolios/asistencia?id_curso=${asistenciaCursoActivo}&id_sesion=${asistenciaSesionActiva}`, { headers: { Accept: 'application/json' } })
+    fetch(`/api/coordinador/portafolios/asistencia?id_curso=${asistenciaCursoActivo}&mes=${asistenciaMesActivo}`, { headers: { Accept: 'application/json' } })
         .then((res) => res.json())
-        .then((data) => {
-            const estudiantes = data.estudiantes ?? [];
-
-            root.innerHTML = estudiantes.length
-                ? estudiantes.map((e) => `
-                    <div class="coord-sesiones-item" data-id-estudiante="${e.id_estudiante}" style="cursor:default">
-                        <span>${e.estudiante.nombres} ${e.estudiante.apellido_paterno ?? ''}</span>
-                        <select class="input-inline asistencia-estado" style="width:auto">
-                            ${ESTADOS_ASISTENCIA.map((estado) => `<option value="${estado}" ${estado === e.estado ? 'selected' : ''}>${estado}</option>`).join('')}
-                        </select>
-                    </div>
-                `).join('')
-                : '<div class="coord-sesiones-lista-vacia">Aún no hay estudiantes matriculados en este curso.</div>';
-        })
+        .then((data) => renderTablaAsistencia(data))
         .catch(() => {
-            root.innerHTML = '<div class="coord-sesiones-lista-vacia">No se pudo cargar la lista de estudiantes.</div>';
+            tabla.innerHTML = '<caption class="coord-sesiones-lista-vacia">No se pudo cargar la asistencia.</caption>';
         });
 }
 
-function guardarAsistenciaCompleta() {
-    if (!asistenciaSesionActiva) return;
+function renderTablaAsistencia(data) {
+    const dias = data.dias ?? [];
+    const estudiantes = data.estudiantes ?? [];
+    const tabla = document.getElementById('coord-asistencia-tabla');
+
+    if (!estudiantes.length) {
+        tabla.innerHTML = '<caption class="coord-sesiones-lista-vacia">Aún no hay estudiantes matriculados en este curso.</caption>';
+
+        return;
+    }
+
+    const theadDias = dias.map((dia) => `<th class="coord-asistencia-th-dia">${nombreDiaCortoAsistencia(dia)}<br>${Number(dia.slice(-2))}</th>`).join('');
+
+    const filas = estudiantes.map((est) => {
+        const celdas = dias.map((dia) => {
+            const estado = est.asistencias[dia];
+            const clase = estado ? '' : 'sin-sesion';
+            const texto = estado ? ABREV_ESTADO_ASISTENCIA[estado] : '—';
+
+            return `<td class="coord-asistencia-celda ${clase}" data-fecha="${dia}" data-id-estudiante="${est.id_estudiante}" data-estado="${estado ?? ''}">${texto}</td>`;
+        }).join('');
+
+        const nombre = `${est.estudiante.nombres} ${est.estudiante.apellido_paterno ?? ''}`;
+
+        return `<tr><td class="coord-asistencia-col-nombre">${nombre}</td>${celdas}</tr>`;
+    }).join('');
+
+    tabla.innerHTML = `
+        <thead><tr><th class="coord-asistencia-col-nombre">Estudiante</th>${theadDias}</tr></thead>
+        <tbody>${filas}</tbody>
+    `;
+
+    tabla.querySelectorAll('.coord-asistencia-celda').forEach((celda) => {
+        celda.addEventListener('click', () => onCeldaAsistenciaClick(celda));
+    });
+}
+
+function onCeldaAsistenciaClick(celda) {
+    const nuevoEstado = siguienteEstadoAsistencia(celda.dataset.estado || null);
+    celda.dataset.estado = nuevoEstado;
+    celda.textContent = ABREV_ESTADO_ASISTENCIA[nuevoEstado];
+    celda.classList.remove('sin-sesion');
+    celda.classList.add('pendiente');
+
+    const fecha = celda.dataset.fecha;
+    const idEstudiante = Number(celda.dataset.idEstudiante);
+
+    asistenciaCambiosPendientes[fecha] ??= {};
+    asistenciaCambiosPendientes[fecha][idEstudiante] = nuevoEstado;
+
+    actualizarIndicadorPendientesAsistencia();
+}
+
+function guardarCambiosAsistencia() {
+    if (!hayPendientesAsistencia() || !asistenciaCursoActivo) return;
     const errorBox = document.getElementById('coord-asistencia-error');
     errorBox.textContent = '';
 
-    const registros = Array.from(document.querySelectorAll('#coord-asistencia-lista-estudiantes [data-id-estudiante]')).map((fila) => ({
-        id_estudiante: Number(fila.dataset.idEstudiante),
-        estado: fila.querySelector('.asistencia-estado').value,
-    }));
+    const cambios = Object.fromEntries(
+        Object.entries(asistenciaCambiosPendientes).map(([fecha, porEstudiante]) => [
+            fecha,
+            Object.entries(porEstudiante).map(([idEstudiante, estado]) => ({ id_estudiante: Number(idEstudiante), estado })),
+        ]),
+    );
 
     fetch('/api/coordinador/portafolios/asistencia', {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ id_sesion: asistenciaSesionActiva, registros }),
+        body: JSON.stringify({ id_curso: asistenciaCursoActivo, cambios }),
     })
         .then(async (res) => {
             const body = await res.json();
@@ -946,7 +1030,9 @@ function guardarAsistenciaCompleta() {
             return body;
         })
         .then(() => {
-            alert('Asistencia guardada.');
+            asistenciaCambiosPendientes = {};
+            document.querySelectorAll('#coord-asistencia-tabla .coord-asistencia-celda.pendiente').forEach((celda) => celda.classList.remove('pendiente'));
+            actualizarIndicadorPendientesAsistencia();
             actualizarConteoAsistencia(asistenciaCursoActivo);
         })
         .catch((error) => {
@@ -956,27 +1042,62 @@ function guardarAsistenciaCompleta() {
 
 let subidaActiva = null;
 
-/** Subida rapida: un clic abre el explorador de archivos y sube apenas se elige uno, con titulo autogenerado. */
+/** Al pulsar "Subir" en una tarjeta se abre un modal para confirmar archivo, curso y semestre antes de enviar. */
 function iniciarSubida(tipo, idCurso) {
-    const select = document.getElementById('coord-mi-portafolio-curso');
-    subidaActiva = { tipo, idCurso, idPeriodo: select.dataset.idPeriodo };
-    document.getElementById('coord-mi-portafolio-input-archivo').click();
+    subidaActiva = { tipo, idCurso };
+    abrirModalSubida();
 }
 
-function subirArchivoSeleccionado(event) {
-    const archivo = event.target.files[0];
-    event.target.value = '';
-    if (!archivo || !subidaActiva) return;
+function actualizarSemestreModalSubida() {
+    const cursoSelect = document.getElementById('coord-mi-portafolio-curso');
+    const modalSemestre = document.getElementById('coord-mi-portafolio-upload-semestre');
+    const opcion = Array.from(cursoSelect.options).find((o) => o.value === subidaActiva.idCurso);
+    const semestre = opcion?.dataset.semestre ?? '';
 
-    const tipoInfo = TIPOS_PORTAFOLIO.find((t) => t.valor === subidaActiva.tipo);
-    const cursoTexto = document.getElementById('coord-mi-portafolio-curso').selectedOptions[0]?.textContent ?? '';
-    const errorBox = document.getElementById('coord-mi-portafolio-error');
+    modalSemestre.innerHTML = semestre ? `<option value="${semestre}">${semestre}</option>` : '<option value="">—</option>';
+}
+
+function abrirModalSubida() {
+    const cursoSelect = document.getElementById('coord-mi-portafolio-curso');
+    const modalCurso = document.getElementById('coord-mi-portafolio-upload-curso');
+
+    modalCurso.innerHTML = cursoSelect.innerHTML;
+    modalCurso.value = subidaActiva.idCurso;
+    modalCurso.onchange = () => {
+        subidaActiva.idCurso = modalCurso.value;
+        actualizarSemestreModalSubida();
+    };
+    actualizarSemestreModalSubida();
+
+    document.getElementById('coord-mi-portafolio-upload-archivo').value = '';
+    document.getElementById('coord-mi-portafolio-upload-error').textContent = '';
+    document.getElementById('coord-mi-portafolio-upload-modal').classList.add('show');
+}
+
+function cerrarModalSubida() {
+    document.getElementById('coord-mi-portafolio-upload-modal').classList.remove('show');
+    subidaActiva = null;
+}
+
+function confirmarSubidaArchivo() {
+    const errorBox = document.getElementById('coord-mi-portafolio-upload-error');
     errorBox.textContent = '';
+
+    const archivo = document.getElementById('coord-mi-portafolio-upload-archivo').files[0];
+    if (!archivo) {
+        errorBox.textContent = 'Selecciona un archivo.';
+        return;
+    }
+    if (!subidaActiva) return;
+
+    const idPeriodo = document.getElementById('coord-mi-portafolio-curso').dataset.idPeriodo;
+    const tipoInfo = TIPOS_PORTAFOLIO.find((t) => t.valor === subidaActiva.tipo);
+    const cursoTexto = document.getElementById('coord-mi-portafolio-upload-curso').selectedOptions[0]?.textContent ?? '';
 
     const formData = new FormData();
     formData.append('documento', archivo);
     formData.append('id_curso', subidaActiva.idCurso);
-    formData.append('id_periodo', subidaActiva.idPeriodo);
+    formData.append('id_periodo', idPeriodo);
     formData.append('tipo', subidaActiva.tipo);
     formData.append('titulo', `${tipoInfo?.etiqueta ?? subidaActiva.tipo} - ${cursoTexto}`);
 
@@ -991,11 +1112,13 @@ function subirArchivoSeleccionado(event) {
 
             return body;
         })
-        .then(() => cargarMiPortafolio())
+        .then(() => {
+            cerrarModalSubida();
+            cargarMiPortafolio();
+        })
         .catch((error) => {
             errorBox.textContent = error?.mensaje ?? (error?.errors ? Object.values(error.errors).flat().join(' ') : 'No se pudo subir el documento.');
-        })
-        .finally(() => { subidaActiva = null; });
+        });
 }
 
 export function initCoordinadorPortafolio() {
@@ -1024,7 +1147,8 @@ export function initCoordinadorPortafolio() {
         btn.addEventListener('click', () => cambiarTab(btn.dataset.tab));
     });
     document.getElementById('coord-mi-portafolio-curso')?.addEventListener('change', cargarMiPortafolio);
-    document.getElementById('coord-mi-portafolio-input-archivo')?.addEventListener('change', subirArchivoSeleccionado);
+    document.getElementById('coord-mi-portafolio-upload-cancelar')?.addEventListener('click', cerrarModalSubida);
+    document.getElementById('coord-mi-portafolio-upload-confirmar')?.addEventListener('click', confirmarSubidaArchivo);
 
     document.getElementById('coord-sesiones-volver')?.addEventListener('click', cerrarGestorSesiones);
     document.getElementById('coord-sesiones-subir')?.addEventListener('click', iniciarSubidaSesion);
@@ -1041,8 +1165,9 @@ export function initCoordinadorPortafolio() {
     document.getElementById('coord-notas-unidad')?.addEventListener('change', renderListaEstudiantesNotas);
 
     document.getElementById('coord-asistencia-volver')?.addEventListener('click', cerrarGestorAsistencia);
-    document.getElementById('coord-asistencia-cargar-sesion')?.addEventListener('click', cargarOCrearSesionAsistencia);
-    document.getElementById('coord-asistencia-guardar')?.addEventListener('click', guardarAsistenciaCompleta);
+    document.getElementById('coord-asistencia-mes-anterior')?.addEventListener('click', () => cambiarMesAsistencia(-1));
+    document.getElementById('coord-asistencia-mes-siguiente')?.addEventListener('click', () => cambiarMesAsistencia(1));
+    document.getElementById('coord-asistencia-guardar')?.addEventListener('click', guardarCambiosAsistencia);
 }
 
 document.addEventListener('DOMContentLoaded', initCoordinadorPortafolio);

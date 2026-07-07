@@ -23,6 +23,7 @@ use App\Http\Controllers\Director\DirectorProgramaController;
 use App\Http\Controllers\Director\DirectorReporteController;
 use App\Http\Controllers\Director\DirectorUsuarioController;
 use App\Http\Controllers\Jua\JuaDashboardController;
+use App\Http\Controllers\Coordinador\CoordinadorAnalyticsController;
 use App\Http\Controllers\Coordinador\CoordinadorConsolidadoController;
 use App\Http\Controllers\Coordinador\CoordinadorCursoController;
 use App\Http\Controllers\Coordinador\CoordinadorDashboardController;
@@ -99,6 +100,7 @@ Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix(
     Route::get('/dashboard', [CoordinadorDashboardController::class, 'index'])->name('dashboard');
     Route::get('/cursos', [CoordinadorCursoController::class, 'page'])->name('cursos.index');
     Route::get('/horarios', [CoordinadorHorarioController::class, 'page'])->name('horarios.index');
+    Route::get('/analitica', [CoordinadorAnalyticsController::class, 'page'])->name('analitica.index');
     Route::get('/portafolio', [CoordinadorPortafolioController::class, 'page'])->name('portafolio.index');
     Route::get('/docentes', [CoordinadorDocenteController::class, 'page'])->name('docentes.index');
     Route::get('/estudiantes', [CoordinadorEstudianteController::class, 'page'])->name('estudiantes.index');
@@ -128,6 +130,7 @@ Route::middleware(['auth', 'role:docente'])->prefix('docente')->name('docente.')
 */
 Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix('api/coordinador')->group(function () {
     Route::get('/data', [CoordinadorDataController::class, 'index']);
+    Route::get('/analitica', [CoordinadorAnalyticsController::class, 'data']);
     Route::get('/cursos', [CoordinadorCursoController::class, 'index']);
     Route::post('/cursos', [CoordinadorCursoController::class, 'store']);
     Route::put('/cursos/{curso}', [CoordinadorCursoController::class, 'update']);
@@ -145,10 +148,8 @@ Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix(
     Route::get('/portafolios', [CoordinadorPortafolioController::class, 'index']);
     Route::get('/portafolios/notas', [CoordinadorPortafolioController::class, 'estudiantesNotas']);
     Route::post('/portafolios/notas', [CoordinadorPortafolioController::class, 'guardarNota']);
-    Route::get('/portafolios/asistencia/sesiones', [CoordinadorPortafolioController::class, 'sesionesAsistencia']);
-    Route::post('/portafolios/asistencia/sesiones', [CoordinadorPortafolioController::class, 'crearSesionAsistencia']);
-    Route::get('/portafolios/asistencia', [CoordinadorPortafolioController::class, 'estudiantesAsistencia']);
-    Route::post('/portafolios/asistencia', [CoordinadorPortafolioController::class, 'guardarAsistencia']);
+    Route::get('/portafolios/asistencia', [CoordinadorPortafolioController::class, 'matrizAsistencia']);
+    Route::post('/portafolios/asistencia', [CoordinadorPortafolioController::class, 'guardarMatrizAsistencia']);
     Route::get('/sesiones', [DocenteSesionController::class, 'index']);
     Route::post('/sesiones', [DocenteSesionController::class, 'store']);
     Route::delete('/sesiones/{sesion}', [DocenteSesionController::class, 'destroy']);
