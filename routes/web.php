@@ -241,6 +241,8 @@ Route::middleware(['auth', 'role:docente'])->prefix('api/docente')->group(functi
     Route::get('/notas', [DocenteNotaController::class, 'data']);
     Route::post('/notas/guardar', [DocenteNotaController::class, 'guardar']);
     Route::post('/notas/cerrar-acta', [DocenteNotaController::class, 'cerrarActa']);
+    Route::get('/asistencia', [DocenteAsistenciaController::class, 'data']);
+    Route::post('/asistencia/guardar', [DocenteAsistenciaController::class, 'guardar']);
     Route::get('/portafolio', [DocentePortafolioController::class, 'index']);
     Route::post('/portafolio', [DocentePortafolioController::class, 'store']);
     Route::get('/sesiones', [DocenteSesionController::class, 'index']);

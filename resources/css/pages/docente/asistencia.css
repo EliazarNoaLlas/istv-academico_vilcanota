@@ -1,0 +1,83 @@
+/* Especifico de docente/asistencia. Prefijo obligatorio: .doc-asistencia-* */
+.doc-asistencia-toolbar {
+    display: flex;
+    gap: 18px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.doc-asistencia-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.doc-asistencia-field label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--text-muted);
+}
+
+.doc-asistencia-toolbar .input-inline {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--white);
+    color: var(--text-primary);
+    min-width: 220px;
+}
+
+.doc-asistencia-estado {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(26, 191, 160, .12);
+    color: var(--teal-dark);
+}
+
+.doc-segmented {
+    display: inline-flex;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.doc-segmented button {
+    border: none;
+    background: var(--white);
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border);
+}
+
+.doc-segmented button:last-child {
+    border-right: none;
+}
+
+.doc-segmented button.active[data-estado="PRESENTE"] { background: var(--teal); color: #fff; }
+.doc-segmented button.active[data-estado="TARDANZA"] { background: var(--gold); color: #fff; }
+.doc-segmented button.active[data-estado="AUSENTE"] { background: var(--red-alert); color: #fff; }
+.doc-segmented button.active[data-estado="JUSTIFICADO"] { background: var(--navy); color: #fff; }
+
+.doc-asistencia-obs {
+    width: 100%;
+    min-width: 160px;
+    padding: 6px 8px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 12px;
+}
+
+#doc-asistencia-guardar {
+    margin-left: 8px;
+}

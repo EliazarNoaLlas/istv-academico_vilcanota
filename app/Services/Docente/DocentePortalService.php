@@ -2,6 +2,8 @@
 
 namespace App\Services\Docente;
 
+use App\Models\AsistenciaDetalle;
+use App\Models\AsistenciaSesion;
 use App\Models\ConfiguracionSistema;
 use App\Models\Curso;
 use App\Models\Docente;
@@ -264,5 +266,107 @@ class DocentePortalService
         abort_unless($tieneNotas, 422, 'No hay notas registradas en esta unidad todavía.');
 
         return DB::transaction(fn () => Nota::whereIn('id_matricula_curso', $idsValidos)->where('unidad', $unidad)->update(['estado' => 'CERRADO']));
+    }
+
+    /** Sesion de asistencia real para curso+fecha. No duplica: una sola sesion por curso+docente+fecha. */
+    public function getOrCrearSesionAsistencia(Curso $curso, string $fecha): AsistenciaSesion
+    {
+        $periodo = $this->getPeriodoActivo();
+        abort_if(! $periodo, 422, 'No hay un periodo académico activo.');
+
+        return AsistenciaSesion::firstOrCreate(
+            ['id_curso' => $curso->id_curso, 'id_docente' => $curso->id_docente, 'fecha_sesion' => $fecha],
+            ['id_periodo' => $periodo->id_periodo, 'estado' => 'REALIZADA']
+        );
+    }
+
+    /** Estudiantes matriculados con su estado de asistencia de la fecha, resumen del dia y alerta de asistencia historica baja. */
+    public function getAsistenciaPorCursoFecha(Curso $curso, string $fecha): array
+    {
+        $sesion = AsistenciaSesion::where('id_curso', $curso->id_curso)
+            ->where('id_docente', $curso->id_docente)
+            ->where('fecha_sesion', $fecha)
+            ->first();
+
+        $detallePorEstudiante = $sesion
+            ? AsistenciaDetalle::where('id_sesion', $sesion->id_sesion)->get()->keyBy('id_estudiante')
+            : collect();
+
+        $historico = AsistenciaDetalle::query()
+            ->join('asistencia_sesiones', 'asistencia_sesiones.id_sesion', '=', 'asistencia_detalle.id_sesion')
+            ->where('asistencia_sesiones.id_curso', $curso->id_curso)
+            ->selectRaw('asistencia_detalle.id_estudiante, COUNT(*) as total, SUM(asistencia_detalle.estado = "PRESENTE") as presentes')
+            ->groupBy('asistencia_detalle.id_estudiante')
+            ->get()
+            ->keyBy('id_estudiante');
+
+        $estudiantes = MatriculaCurso::where('id_curso', $curso->id_curso)
+            ->where('estado', 'EN_CURSO')
+            ->with('matricula.estudiante')
+            ->get()
+            ->map(function (MatriculaCurso $mc) use ($detallePorEstudiante, $historico) {
+                $estudiante = $mc->matricula->estudiante;
+                $detalle = $detallePorEstudiante->get($estudiante->id_estudiante);
+                $hist = $historico->get($estudiante->id_estudiante);
+                $pctHistorico = $hist && $hist->total > 0 ? round($hist->presentes / $hist->total * 100, 1) : null;
+
+                return [
+                    'id_estudiante' => $estudiante->id_estudiante,
+                    'codigo_estudiante' => $estudiante->codigo_estudiante,
+                    'dni' => $estudiante->dni,
+                    'nombre_completo' => trim($estudiante->apellido_paterno.' '.$estudiante->apellido_materno).', '.$estudiante->nombres,
+                    'estado' => $detalle->estado ?? null,
+                    'observacion' => $detalle->observacion ?? null,
+                    'asistencia_historica_pct' => $pctHistorico,
+                ];
+            })
+            ->sortBy('nombre_completo')
+            ->values();
+
+        $conEstado = $estudiantes->filter(fn ($e) => $e['estado'] !== null);
+
+        return [
+            'sesion' => $sesion ? ['id_sesion' => $sesion->id_sesion, 'estado' => $sesion->estado, 'tema' => $sesion->tema] : null,
+            'estudiantes' => $estudiantes,
+            'resumen' => [
+                'total' => $estudiantes->count(),
+                'presentes' => $conEstado->filter(fn ($e) => $e['estado'] === 'PRESENTE')->count(),
+                'ausentes' => $conEstado->filter(fn ($e) => $e['estado'] === 'AUSENTE')->count(),
+                'tardanzas' => $conEstado->filter(fn ($e) => $e['estado'] === 'TARDANZA')->count(),
+                'justificados' => $conEstado->filter(fn ($e) => $e['estado'] === 'JUSTIFICADO')->count(),
+                'porcentaje_asistencia' => $conEstado->isNotEmpty()
+                    ? round($conEstado->filter(fn ($e) => $e['estado'] === 'PRESENTE')->count() / $conEstado->count() * 100, 1)
+                    : null,
+            ],
+            'alertas_bajo_70' => $estudiantes->filter(fn ($e) => $e['asistencia_historica_pct'] !== null && $e['asistencia_historica_pct'] < 70)->values(),
+        ];
+    }
+
+    /** Guarda asistencia de una fecha: crea la sesion si no existe (no duplica) y hace upsert por estudiante en transaccion. */
+    public function guardarAsistencia(Curso $curso, string $fecha, ?string $tema, array $registros): void
+    {
+        $idsEstudiantesValidos = MatriculaCurso::where('id_curso', $curso->id_curso)
+            ->where('estado', 'EN_CURSO')
+            ->with('matricula')
+            ->get()
+            ->pluck('matricula.id_estudiante');
+
+        DB::transaction(function () use ($curso, $fecha, $tema, $registros, $idsEstudiantesValidos) {
+            $sesion = $this->getOrCrearSesionAsistencia($curso, $fecha);
+
+            if ($tema) {
+                $sesion->update(['tema' => $tema]);
+            }
+
+            foreach ($registros as $fila) {
+                $idEstudiante = (int) $fila['id_estudiante'];
+                abort_unless($idsEstudiantesValidos->contains($idEstudiante), 403, 'Uno de los estudiantes no pertenece a este curso.');
+
+                AsistenciaDetalle::updateOrCreate(
+                    ['id_sesion' => $sesion->id_sesion, 'id_estudiante' => $idEstudiante],
+                    ['estado' => $fila['estado'], 'observacion' => $fila['observacion'] ?? null]
+                );
+            }
+        });
     }
 }
