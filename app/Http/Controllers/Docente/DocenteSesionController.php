@@ -16,7 +16,7 @@ class DocenteSesionController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $idDocente = $request->user()->docente?->id_docente;
+        $idDocente = $request->user()->miDocentePropio()?->id_docente;
         $idCurso = (int) $request->query('id_curso');
 
         if (! $idDocente || ! $idCurso) {
@@ -35,7 +35,7 @@ class DocenteSesionController extends Controller
             $sesion = $this->sesiones->subir(
                 $request->file('archivo'),
                 (int) $request->validated('id_curso'),
-                $request->user()->docente?->id_docente,
+                $request->user()->miDocentePropio()?->id_docente,
                 $request->validated('titulo'),
                 $request->validated('numero_sesion'),
             );
@@ -50,7 +50,7 @@ class DocenteSesionController extends Controller
 
     public function destroy(Request $request, SesionAprendizaje $sesion): JsonResponse
     {
-        $eliminado = $this->sesiones->eliminar($sesion, $request->user()->docente?->id_docente);
+        $eliminado = $this->sesiones->eliminar($sesion, $request->user()->miDocentePropio()?->id_docente);
 
         if (! $eliminado) {
             return response()->json(['ok' => false, 'mensaje' => 'La sesion no pertenece a este docente.'], 403);

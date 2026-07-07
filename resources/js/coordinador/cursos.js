@@ -35,6 +35,12 @@ function renderRow(curso) {
     `;
 }
 
+/** 2026-I dicta los ciclos impares (I, III, V) y 2026-II los pares (II, IV, VI). */
+const SEMESTRES_POR_PERIODO = {
+    '2026-I': ['I', 'III', 'V'],
+    '2026-II': ['II', 'IV', 'VI'],
+};
+
 function poblarFiltroModulo(cursos) {
     const select = document.getElementById('coord-cursos-filtro-modulo');
     const actuales = new Set(Array.from(select.options).map((o) => o.value));
@@ -80,7 +86,12 @@ function cargarCursos(params = {}) {
             cursosCache = data.cursos ?? [];
 
             const modulo = document.getElementById('coord-cursos-filtro-modulo')?.value;
-            const filtrados = modulo ? cursosCache.filter((c) => c.modulo === modulo) : cursosCache;
+            const periodo = document.getElementById('coord-cursos-filtro-periodo')?.value;
+            const semestresDelPeriodo = SEMESTRES_POR_PERIODO[periodo];
+
+            const filtrados = cursosCache
+                .filter((c) => !modulo || c.modulo === modulo)
+                .filter((c) => !semestresDelPeriodo || semestresDelPeriodo.includes(c.semestre));
 
             tbody.innerHTML = filtrados.length
                 ? filtrados.map(renderRow).join('')
@@ -167,10 +178,8 @@ function filtrosActuales() {
     const params = {};
     const q = document.getElementById('coord-cursos-search')?.value;
     const semestre = document.getElementById('coord-cursos-filtro-semestre')?.value;
-    const idPrograma = document.getElementById('coord-cursos-filtro-programa')?.value;
     if (q) params.q = q;
     if (semestre) params.semestre = semestre;
-    if (idPrograma) params.id_programa = idPrograma;
     return params;
 }
 
@@ -189,7 +198,7 @@ export function initCoordinadorCursos() {
 
     document.getElementById('coord-cursos-filtro-semestre')?.addEventListener('change', () => cargarCursos(filtrosActuales()));
     document.getElementById('coord-cursos-filtro-modulo')?.addEventListener('change', () => cargarCursos(filtrosActuales()));
-    document.getElementById('coord-cursos-filtro-programa')?.addEventListener('change', () => cargarCursos(filtrosActuales()));
+    document.getElementById('coord-cursos-filtro-periodo')?.addEventListener('change', () => cargarCursos(filtrosActuales()));
 
     document.getElementById('coord-cursos-modal-cerrar')?.addEventListener('click', cerrarModal);
     document.getElementById('coord-cursos-form')?.addEventListener('submit', enviarFormulario);

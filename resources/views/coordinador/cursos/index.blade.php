@@ -40,11 +40,9 @@
                     <input type="text" id="coord-cursos-search" class="input-inline coord-cursos-search"
                            placeholder="Buscar por nombre de curso...">
 
-                    <select id="coord-cursos-filtro-programa">
-                        <option value="">Todos los programas</option>
-                        @foreach ($programas as $programa)
-                            <option value="{{ $programa->id_programa }}">{{ $programa->nombre }}</option>
-                        @endforeach
+                    <select id="coord-cursos-filtro-periodo">
+                        <option value="2026-I">Periodo académico 2026-I</option>
+                        <option value="2026-II">Periodo académico 2026-II</option>
                     </select>
 
                     <select id="coord-cursos-filtro-semestre">

@@ -3,6 +3,7 @@
 namespace App\Services\Academic;
 
 use App\Models\Curso;
+use App\Models\DocentePrograma;
 use Illuminate\Database\Eloquent\Collection;
 
 class CursoService
@@ -27,13 +28,36 @@ class CursoService
 
     public function crear(array $datos): Curso
     {
-        return Curso::create($datos);
+        $curso = Curso::create($datos);
+        $this->sincronizarDocentePrograma($curso);
+
+        return $curso;
     }
 
     public function actualizar(Curso $curso, array $datos): Curso
     {
         $curso->update($datos);
+        $this->sincronizarDocentePrograma($curso);
 
         return $curso->fresh(['docente.usuario', 'programa']);
+    }
+
+    /**
+     * Si el curso queda con docente y programa, garantiza que exista el
+     * vinculo docente_programa correspondiente (con valores por defecto si
+     * es la primera vez). Sin esto, un docente recien asignado a un curso
+     * queda invisible en cualquier listado filtrado por programa, incluida
+     * la propia cuenta de un coordinador que tambien dicta clases.
+     */
+    private function sincronizarDocentePrograma(Curso $curso): void
+    {
+        if (! $curso->id_docente || ! $curso->id_programa) {
+            return;
+        }
+
+        DocentePrograma::firstOrCreate([
+            'id_docente' => $curso->id_docente,
+            'id_programa' => $curso->id_programa,
+        ]);
     }
 }

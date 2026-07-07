@@ -132,6 +132,15 @@ Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix(
     Route::post('/horarios/ia/{idGeneracion}/reparar', [CoordinadorHorarioController::class, 'repararGeneracionIa']);
     Route::get('/horarios/ia/{idGeneracion}/estado', [CoordinadorHorarioController::class, 'estadoGeneracionIa']);
     Route::get('/portafolios', [CoordinadorPortafolioController::class, 'index']);
+    Route::get('/portafolios/notas', [CoordinadorPortafolioController::class, 'estudiantesNotas']);
+    Route::post('/portafolios/notas', [CoordinadorPortafolioController::class, 'guardarNota']);
+    Route::get('/portafolios/asistencia/sesiones', [CoordinadorPortafolioController::class, 'sesionesAsistencia']);
+    Route::post('/portafolios/asistencia/sesiones', [CoordinadorPortafolioController::class, 'crearSesionAsistencia']);
+    Route::get('/portafolios/asistencia', [CoordinadorPortafolioController::class, 'estudiantesAsistencia']);
+    Route::post('/portafolios/asistencia', [CoordinadorPortafolioController::class, 'guardarAsistencia']);
+    Route::get('/sesiones', [DocenteSesionController::class, 'index']);
+    Route::post('/sesiones', [DocenteSesionController::class, 'store']);
+    Route::delete('/sesiones/{sesion}', [DocenteSesionController::class, 'destroy']);
     Route::get('/docentes', [CoordinadorDocenteController::class, 'index']);
     Route::get('/estudiantes', [CoordinadorEstudianteController::class, 'index']);
     Route::get('/notas', [CoordinadorNotaController::class, 'index']);

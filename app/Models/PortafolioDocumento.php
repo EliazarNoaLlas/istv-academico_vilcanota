@@ -27,6 +27,7 @@ class PortafolioDocumento extends Model
         'archivo',
         'estado',
         'observacion',
+        'fecha_subida',
     ];
 
     protected $casts = [

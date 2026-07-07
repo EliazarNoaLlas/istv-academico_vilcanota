@@ -47,6 +47,14 @@ class CoordinadorHorarioController extends Controller
             fn ($programa) => $programa->id_programa === auth()->user()->id_programa,
         ));
 
+        // Si el coordinador tambien dicta clases, debe poder asignarse a si
+        // mismo un curso en el horario aunque su docente_programa aun no
+        // exista (recien se crea al guardar un curso u horario a su nombre).
+        $miDocente = auth()->user()->miDocentePropio();
+        if ($miDocente && ! $catalogos['docentes']->contains('id_docente', $miDocente->id_docente)) {
+            $catalogos['docentes']->push($miDocente->load('usuario'));
+        }
+
         return $catalogos;
     }
 

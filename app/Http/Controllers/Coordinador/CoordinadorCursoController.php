@@ -22,8 +22,18 @@ class CoordinadorCursoController extends Controller
 
     public function page(): View
     {
+        $docentes = $this->docentes->listar();
+
+        // Si el coordinador tambien dicta clases, debe poder asignarse a si
+        // mismo un curso aunque su docente_programa aun no exista (recien se
+        // crea al guardar el curso): sin esto no aparece en su propio selector.
+        $miDocente = auth()->user()->miDocentePropio();
+        if ($miDocente && ! $docentes->contains('id_docente', $miDocente->id_docente)) {
+            $docentes->push($miDocente->load('usuario'));
+        }
+
         return view('coordinador.cursos.index', [
-            'docentes' => $this->docentes->listar(),
+            'docentes' => $docentes,
             'programas' => ProgramaEstudio::where('id_programa', auth()->user()->id_programa)->get(),
         ]);
     }

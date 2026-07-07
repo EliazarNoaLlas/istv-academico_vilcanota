@@ -88,3 +88,306 @@
     margin-top: 4px;
     display: block;
 }
+
+/* Tarjetas de "Mi portafolio", una por tipo de documento. */
+.coord-mi-portafolio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+}
+
+@media (min-width: 900px) {
+    .coord-mi-portafolio-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.coord-mi-portafolio-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--card-color, var(--teal));
+    padding: 18px;
+}
+
+.coord-mi-portafolio-card-head {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.coord-mi-portafolio-card-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--card-color, var(--teal)) 14%, white);
+    color: var(--card-color, var(--teal));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.coord-mi-portafolio-card-titulo {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--navy);
+}
+
+.coord-mi-portafolio-card-subtitulo {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.coord-mi-portafolio-card-detalle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.coord-mi-portafolio-card-badge {
+    margin-bottom: 14px;
+}
+
+.coord-mi-portafolio-card button.c-btn {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.coord-mi-portafolio-card-archivos {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.coord-mi-portafolio-card-archivos:hover {
+    color: var(--navy);
+    border-color: var(--navy);
+}
+
+.coord-mi-portafolio-card-badge .c-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.coord-mi-portafolio-card-lista {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+}
+
+.coord-mi-portafolio-card-lista.show {
+    display: block;
+}
+
+.coord-mi-portafolio-card-lista-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    color: var(--text-secondary);
+}
+
+/* Gestor de "Sesiones de aprendizaje" (3 columnas: acciones / cursos / sesiones). */
+.coord-sesiones-grid {
+    display: grid;
+    grid-template-columns: 220px 260px 1fr;
+    gap: 0;
+    align-items: start;
+}
+
+.coord-sesiones-col {
+    padding: 0 18px;
+    border-right: 1px solid var(--border);
+}
+
+.coord-sesiones-col:first-child {
+    padding-left: 0;
+}
+
+.coord-sesiones-col-lista {
+    border-right: none;
+}
+
+.coord-sesiones-col h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+}
+
+.coord-sesiones-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.coord-sesiones-docente-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 13px;
+}
+
+.coord-sesiones-docente-card small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.coord-sesiones-seleccionado {
+    background: rgba(26, 191, 160, .08);
+    border: 1px solid rgba(26, 191, 160, .3);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 12px;
+}
+
+.coord-sesiones-seleccionado small {
+    color: var(--teal-dark);
+    font-weight: 700;
+    letter-spacing: .4px;
+}
+
+.coord-sesiones-col button.c-btn {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.coord-sesiones-btn-eliminar {
+    color: var(--red-alert);
+    border-color: rgba(224, 80, 80, .35);
+}
+
+.coord-sesiones-curso-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all .15s;
+}
+
+.coord-sesiones-curso-item:hover {
+    border-color: var(--navy);
+}
+
+.coord-sesiones-curso-item.active {
+    background: var(--navy);
+    border-color: var(--navy);
+}
+
+.coord-sesiones-curso-item.active .coord-sesiones-curso-nombre,
+.coord-sesiones-curso-item.active .coord-sesiones-curso-conteo {
+    color: var(--white);
+}
+
+.coord-sesiones-curso-icono {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--item-color, var(--teal)) 16%, white);
+    color: var(--item-color, var(--teal));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.coord-sesiones-curso-item.active .coord-sesiones-curso-icono {
+    background: rgba(255, 255, 255, .15);
+    color: var(--white);
+}
+
+.coord-sesiones-curso-nombre {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--navy);
+    line-height: 1.3;
+}
+
+.coord-sesiones-curso-conteo {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.coord-sesiones-lista-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.coord-sesiones-lista-header input[type="text"] {
+    padding: 8px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: inherit;
+    min-width: 200px;
+}
+
+.coord-sesiones-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.coord-sesiones-item:hover {
+    border-color: var(--navy);
+}
+
+.coord-sesiones-item.selected {
+    border-color: var(--teal);
+    background: rgba(26, 191, 160, .06);
+}
+
+.coord-sesiones-item-fecha {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.coord-sesiones-lista-vacia {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-sm);
+}

@@ -10,12 +10,10 @@
             </div>
         </div>
 
-        @if ($miDocente)
-            <div class="c-tabs">
-                <button type="button" class="c-tab-btn active" data-tab="revision">Revisión de docentes</button>
-                <button type="button" class="c-tab-btn" data-tab="mio">Mi portafolio</button>
-            </div>
-        @endif
+        <div class="c-tabs">
+            <button type="button" class="c-tab-btn active" data-tab="revision">Revisar portafolios</button>
+            <button type="button" class="c-tab-btn" data-tab="mio">Mi portafolio</button>
+        </div>
 
         <div class="c-tab-pane active" id="tab-revision">
             <div class="coord-kpis" id="coord-portafolio-kpis">
@@ -92,64 +90,176 @@
             </div>
         </div>
 
-        @if ($miDocente)
-            <div class="c-tab-pane" id="tab-mio">
+        <div class="c-tab-pane" id="tab-mio">
+            @if ($miDocente)
                 <div class="c-panel">
-                    <div class="c-panel-header"><i class="bi bi-upload"></i><h3>Subir documento</h3></div>
                     <div class="c-panel-body">
-                        <form id="coord-mi-portafolio-form" class="coord-portafolio-toolbar" enctype="multipart/form-data" data-id-docente="{{ $miDocente->id_docente }}">
-                            <select name="id_curso" required>
-                                <option value="">Seleccione curso</option>
-                                @foreach ($miDocente->cursos as $curso)
+                        <div class="coord-portafolio-toolbar">
+                            <select id="coord-mi-portafolio-curso" data-id-docente="{{ $miDocente->id_docente }}" data-id-periodo="{{ $periodoActivo?->id_periodo }}">
+                                @forelse ($miDocente->cursos as $curso)
                                     <option value="{{ $curso->id_curso }}">{{ $curso->nombre_curso }} ({{ $curso->semestre }})</option>
-                                @endforeach
+                                @empty
+                                    <option value="">Aún no tienes cursos asignados</option>
+                                @endforelse
                             </select>
-
-                            <select name="tipo" required>
-                                <option value="SILABO">Sílabo</option>
-                                <option value="PLAN_SESION">Plan de sesión</option>
-                                <option value="EVALUACION">Evaluación</option>
-                                <option value="INSTRUMENTO">Instrumento</option>
-                                <option value="ASISTENCIA">Asistencia</option>
-                                <option value="NOTAS">Notas</option>
-                                <option value="EVIDENCIA">Evidencia</option>
-                                <option value="ACTA">Acta</option>
-                                <option value="OTRO">Otro</option>
-                            </select>
-
-                            <input type="text" name="titulo" placeholder="Título del documento" required>
-                            <input type="hidden" name="id_periodo" value="{{ $periodoActivo?->id_periodo }}">
-                            <input type="file" name="documento" required>
-
-                            <button type="submit" class="c-btn c-btn-primary c-btn-sm">
-                                <i class="bi bi-upload"></i> Subir
-                            </button>
-                        </form>
+                        </div>
                         <div class="coord-portafolio-form-error" id="coord-mi-portafolio-error"></div>
                     </div>
                 </div>
 
-                <div class="c-panel">
-                    <div class="c-panel-header"><i class="bi bi-folder2-open"></i><h3>Mis documentos</h3></div>
-                    <div class="c-panel-body" style="padding-top:0">
-                        <table class="c-table">
-                            <thead>
-                                <tr>
-                                    <th>Documento</th>
-                                    <th>Curso</th>
-                                    <th>Tipo</th>
-                                    <th>Estado</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="coord-mi-portafolio-tbody">
-                                <tr><td colspan="5" class="coord-portafolio-empty">Cargando documentos…</td></tr>
-                            </tbody>
-                        </table>
+                <div class="coord-mi-portafolio-grid" id="coord-mi-portafolio-grid"></div>
+
+                <input type="file" id="coord-mi-portafolio-input-archivo" style="display:none">
+
+                <div class="c-panel coord-sesiones-manager" id="coord-sesiones-manager" style="display:none" data-id-docente="{{ $miDocente->id_docente }}">
+                    <div class="c-panel-header">
+                        <i class="bi bi-journal-text"></i><h3>Sesiones de aprendizaje</h3>
+                        <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-sesiones-volver">Volver</button>
+                    </div>
+                    <div class="c-panel-body">
+                        <div class="coord-sesiones-grid">
+                            <div class="coord-sesiones-col">
+                                <h4>Acciones</h4>
+                                <div class="coord-sesiones-docente-card">
+                                    <div class="c-avatar-sm">{{ strtoupper(substr(auth()->user()->nombres, 0, 1) . substr(auth()->user()->apellidos ?? '', 0, 1)) }}</div>
+                                    <div>
+                                        <div>{{ auth()->user()->nombres }} {{ auth()->user()->apellidos }}</div>
+                                        <small>{{ $miDocente->cursos->count() }} cursos asignados</small>
+                                    </div>
+                                </div>
+
+                                <div class="coord-sesiones-seleccionado" id="coord-sesiones-seleccionado" style="display:none">
+                                    <small>SELECCIONADO</small>
+                                    <div>Curso: <strong id="coord-sesiones-curso-actual"></strong></div>
+                                </div>
+
+                                <button type="button" class="c-btn c-btn-primary" id="coord-sesiones-subir" disabled>
+                                    <i class="bi bi-cloud-upload"></i> Subir sesión
+                                </button>
+                                <button type="button" class="c-btn c-btn-outline coord-sesiones-btn-eliminar" id="coord-sesiones-eliminar" disabled>
+                                    <i class="bi bi-trash"></i> Eliminar
+                                </button>
+                                <p class="coord-sesiones-hint">Elige una sesión de la lista de la derecha para poder eliminarla.</p>
+                                <div class="coord-portafolio-form-error" id="coord-sesiones-error"></div>
+                            </div>
+
+                            <div class="coord-sesiones-col">
+                                <h4><i class="bi bi-journal-bookmark"></i> Cursos</h4>
+                                <p class="coord-sesiones-hint">Filtra las sesiones por curso</p>
+                                <div id="coord-sesiones-lista-cursos"></div>
+                            </div>
+
+                            <div class="coord-sesiones-col coord-sesiones-col-lista">
+                                <div class="coord-sesiones-lista-header">
+                                    <h4 id="coord-sesiones-lista-titulo"><i class="bi bi-list"></i> Seleccione un curso</h4>
+                                    <input type="text" id="coord-sesiones-buscar" placeholder="Buscar sesión...">
+                                </div>
+                                <div id="coord-sesiones-lista-items"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        @endif
+
+                <input type="file" id="coord-sesiones-input-archivo" style="display:none">
+
+                {{-- Reutiliza las clases coord-sesiones-* (mismo layout de 3 columnas). --}}
+                <div class="c-panel coord-sesiones-manager" id="coord-notas-manager" style="display:none" data-id-docente="{{ $miDocente->id_docente }}">
+                    <div class="c-panel-header">
+                        <i class="bi bi-clipboard-data"></i><h3>Ingresar Notas</h3>
+                        <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-notas-volver">Volver</button>
+                    </div>
+                    <div class="c-panel-body">
+                        <div class="coord-sesiones-grid">
+                            <div class="coord-sesiones-col">
+                                <h4>Acciones</h4>
+                                <div class="coord-sesiones-docente-card">
+                                    <div class="c-avatar-sm">{{ strtoupper(substr(auth()->user()->nombres, 0, 1) . substr(auth()->user()->apellidos ?? '', 0, 1)) }}</div>
+                                    <div>{{ auth()->user()->nombres }} {{ auth()->user()->apellidos }}</div>
+                                </div>
+
+                                <div class="coord-sesiones-seleccionado" id="coord-notas-seleccionado" style="display:none">
+                                    <small>SELECCIONADO</small>
+                                    <div>Curso: <strong id="coord-notas-curso-actual"></strong></div>
+                                </div>
+
+                                <label class="coord-sesiones-hint" style="display:block;font-weight:600;color:var(--navy)">Unidad</label>
+                                <select id="coord-notas-unidad" class="input-inline" style="width:100%;margin-bottom:14px">
+                                    @foreach (['I', 'II', 'III', 'IV', 'V', 'VI'] as $unidad)
+                                        <option value="{{ $unidad }}">{{ $unidad }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="coord-portafolio-form-error" id="coord-notas-error"></div>
+                            </div>
+
+                            <div class="coord-sesiones-col">
+                                <h4><i class="bi bi-journal-bookmark"></i> Cursos</h4>
+                                <p class="coord-sesiones-hint">Filtra los estudiantes por curso</p>
+                                <div id="coord-notas-lista-cursos"></div>
+                            </div>
+
+                            <div class="coord-sesiones-col coord-sesiones-col-lista">
+                                <div class="coord-sesiones-lista-header">
+                                    <h4 id="coord-notas-lista-titulo"><i class="bi bi-people"></i> Seleccione un curso</h4>
+                                </div>
+                                <div id="coord-notas-lista-estudiantes"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="c-panel coord-sesiones-manager" id="coord-asistencia-manager" style="display:none" data-id-docente="{{ $miDocente->id_docente }}">
+                    <div class="c-panel-header">
+                        <i class="bi bi-calendar-check"></i><h3>Ingresar Asistencia</h3>
+                        <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-asistencia-volver">Volver</button>
+                    </div>
+                    <div class="c-panel-body">
+                        <div class="coord-sesiones-grid">
+                            <div class="coord-sesiones-col">
+                                <h4>Acciones</h4>
+                                <div class="coord-sesiones-docente-card">
+                                    <div class="c-avatar-sm">{{ strtoupper(substr(auth()->user()->nombres, 0, 1) . substr(auth()->user()->apellidos ?? '', 0, 1)) }}</div>
+                                    <div>{{ auth()->user()->nombres }} {{ auth()->user()->apellidos }}</div>
+                                </div>
+
+                                <div class="coord-sesiones-seleccionado" id="coord-asistencia-seleccionado" style="display:none">
+                                    <small>SELECCIONADO</small>
+                                    <div>Curso: <strong id="coord-asistencia-curso-actual"></strong></div>
+                                </div>
+
+                                <label class="coord-sesiones-hint" style="display:block;font-weight:600;color:var(--navy)">Fecha de sesión</label>
+                                <input type="date" id="coord-asistencia-fecha" class="input-inline" style="width:100%;margin-bottom:10px">
+                                <button type="button" class="c-btn c-btn-primary" id="coord-asistencia-cargar-sesion" disabled>
+                                    <i class="bi bi-calendar-plus"></i> Cargar sesión
+                                </button>
+                                <button type="button" class="c-btn c-btn-outline" id="coord-asistencia-guardar" disabled>
+                                    <i class="bi bi-save"></i> Guardar asistencia
+                                </button>
+                                <div class="coord-portafolio-form-error" id="coord-asistencia-error"></div>
+                            </div>
+
+                            <div class="coord-sesiones-col">
+                                <h4><i class="bi bi-journal-bookmark"></i> Cursos</h4>
+                                <p class="coord-sesiones-hint">Filtra la asistencia por curso</p>
+                                <div id="coord-asistencia-lista-cursos"></div>
+                            </div>
+
+                            <div class="coord-sesiones-col coord-sesiones-col-lista">
+                                <div class="coord-sesiones-lista-header">
+                                    <h4 id="coord-asistencia-lista-titulo"><i class="bi bi-people"></i> Seleccione un curso y fecha</h4>
+                                </div>
+                                <div id="coord-asistencia-lista-estudiantes"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="c-panel">
+                    <div class="c-panel-body">
+                        <p class="coord-portafolio-empty">Tu cuenta no tiene un perfil docente asociado, así que no dictas cursos propios para tener un portafolio. Si deberías dictar clases, contacta a Dirección Académica.</p>
+                    </div>
+                </div>
+            @endif
+        </div>
     </div>
 
     <div class="coord-portafolio-modal-backdrop" id="coord-portafolio-modal">
