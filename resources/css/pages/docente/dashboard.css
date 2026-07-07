@@ -2,3 +2,32 @@
 .doc-dashboard-kpis {
     margin-bottom: 24px;
 }
+
+.doc-chart-wrap {
+    position: relative;
+    height: 240px;
+}
+
+.doc-chart-wrap.doc-chart-small {
+    height: 200px;
+}
+
+.doc-clase-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.doc-clase-item:last-child {
+    border-bottom: none;
+}
+
+.doc-clase-hora {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy);
+    white-space: nowrap;
+}

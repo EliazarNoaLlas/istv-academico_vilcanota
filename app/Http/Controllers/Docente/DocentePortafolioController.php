@@ -8,6 +8,7 @@ use App\Services\Portafolios\PortafolioDocumentoService;
 use App\Services\Portafolios\PortafolioUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class DocentePortafolioController extends Controller
 {
@@ -15,6 +16,11 @@ class DocentePortafolioController extends Controller
         private PortafolioDocumentoService $documentos,
         private PortafolioUploadService $subida,
     ) {}
+
+    public function page(): View
+    {
+        return view('docente.portafolio.index');
+    }
 
     public function index(Request $request): JsonResponse
     {

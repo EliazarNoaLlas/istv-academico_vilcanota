@@ -99,6 +99,29 @@
                 <i class="bi bi-check2-square ni"></i> Validaciones
             </a>
         @endif
+        @if ($rol === 'docente')
+            <a href="{{ route('docente.cursos.index') }}" class="nav-item {{ request()->routeIs('docente.cursos.*') ? 'active' : '' }}">
+                <i class="bi bi-journal-bookmark ni"></i> Mis Cursos
+            </a>
+            <a href="{{ route('docente.horario.index') }}" class="nav-item {{ request()->routeIs('docente.horario.*') ? 'active' : '' }}">
+                <i class="bi bi-calendar-week ni"></i> Mi Horario
+            </a>
+            <a href="{{ route('docente.analitica.index') }}" class="nav-item {{ request()->routeIs('docente.analitica.*') ? 'active' : '' }}">
+                <i class="bi bi-graph-up ni"></i> Analítica
+            </a>
+            <a href="{{ route('docente.notas.index') }}" class="nav-item {{ request()->routeIs('docente.notas.*') ? 'active' : '' }}">
+                <i class="bi bi-clipboard-data ni"></i> Registro de Notas
+            </a>
+            <a href="{{ route('docente.asistencia.index') }}" class="nav-item {{ request()->routeIs('docente.asistencia.*') ? 'active' : '' }}">
+                <i class="bi bi-check2-square ni"></i> Registro de Asistencia
+            </a>
+            <a href="{{ route('docente.portafolio.index') }}" class="nav-item {{ request()->routeIs('docente.portafolio.*') ? 'active' : '' }}">
+                <i class="bi bi-folder2-open ni"></i> Portafolio
+            </a>
+            <a href="{{ route('docente.sesiones.index') }}" class="nav-item {{ request()->routeIs('docente.sesiones.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-text ni"></i> Sesiones de Aprendizaje
+            </a>
+        @endif
         {{-- Los demas modulos (alertas, reportes, configuracion...) se
              conectan cuando su ruta real exista. --}}
     </div>

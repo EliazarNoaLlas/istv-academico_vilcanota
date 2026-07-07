@@ -41,6 +41,9 @@
 @import 'pages/coordinador/horarios.css';
 @import 'pages/coordinador/portafolio.css';
 @import 'pages/docente/dashboard.css';
+@import 'pages/docente/cursos.css';
+@import 'pages/docente/horario.css';
+@import 'pages/docente/notas.css';
 @import 'pages/director/dashboard.css';
 @import 'pages/director/usuarios.css';
 @import 'pages/director/analytics.css';

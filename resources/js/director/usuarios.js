@@ -172,21 +172,24 @@ function cambiarEstado(idUsuario, estado, motivo) {
 let usuarioEnEdicion = null;
 
 /** Con tipo ESPECIFICO los checkboxes de programa se comportan como radio (solo 1); con GENERAL, seleccion libre. */
-function aplicarModoProgramas() {
-    const esGeneral = document.querySelector('input[name="tipo_docente"]:checked')?.value === 'GENERAL';
-    const checks = document.querySelectorAll('#dir-usuarios-programas-lista input[type="checkbox"]');
+function esModoGeneral() {
+    return document.querySelector('input[name="tipo_docente"]:checked')?.value === 'GENERAL';
+}
 
-    document.getElementById('dir-usuarios-programas-hint').textContent = esGeneral
+function actualizarHintProgramas() {
+    document.getElementById('dir-usuarios-programas-hint').textContent = esModoGeneral()
         ? 'Puede seleccionar varios programas.'
         : 'Seleccione un único programa (docente específico).';
+}
 
-    checks.forEach((chk) => {
-        chk.addEventListener('change', () => {
-            if (!esGeneral && chk.checked) {
-                checks.forEach((otro) => { if (otro !== chk) otro.checked = false; });
-            }
-        });
-    });
+/** Al pasar a ESPECIFICO con varios marcados, deja solo el primero para no dejar un estado invalido. */
+function aplicarModoProgramas() {
+    actualizarHintProgramas();
+
+    if (esModoGeneral()) return;
+
+    const marcados = document.querySelectorAll('#dir-usuarios-programas-lista input[type="checkbox"]:checked');
+    marcados.forEach((chk, indice) => { if (indice > 0) chk.checked = false; });
 }
 
 /**
@@ -393,6 +396,15 @@ export function initDirectorUsuarios() {
     document.getElementById('dir-usuarios-select-rol')?.addEventListener('change', actualizarVisibilidadDocente);
     document.querySelectorAll('input[name="tipo_docente"]').forEach((radio) => {
         radio.addEventListener('change', aplicarModoProgramas);
+    });
+
+    // Delegado y registrado una sola vez: si es ESPECIFICO, marcar un programa desmarca los demas.
+    document.getElementById('dir-usuarios-programas-lista')?.addEventListener('change', (event) => {
+        if (event.target.type !== 'checkbox' || esModoGeneral() || !event.target.checked) return;
+
+        document.querySelectorAll('#dir-usuarios-programas-lista input[type="checkbox"]').forEach((otro) => {
+            if (otro !== event.target) otro.checked = false;
+        });
     });
 
     document.getElementById('dir-usuarios-motivo-cancelar')?.addEventListener('click', () => cerrarModalMotivo(true));

@@ -6,6 +6,7 @@ use App\Models\Scopes\CoordinadorProgramaDirectoScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Curso extends Model
@@ -81,5 +82,15 @@ class Curso extends Model
     public function iaPredicciones(): HasMany
     {
         return $this->hasMany(IaPrediccion::class, 'id_curso');
+    }
+
+    public function notas(): HasManyThrough
+    {
+        return $this->hasManyThrough(Nota::class, MatriculaCurso::class, 'id_curso', 'id_matricula_curso', 'id_curso', 'id_matricula_curso');
+    }
+
+    public function asistenciaDetalles(): HasManyThrough
+    {
+        return $this->hasManyThrough(AsistenciaDetalle::class, AsistenciaSesion::class, 'id_curso', 'id_sesion', 'id_curso', 'id_sesion');
     }
 }

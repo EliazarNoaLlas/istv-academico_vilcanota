@@ -175,23 +175,47 @@
 }
 
 .dir-usuarios-programas-lista {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    max-height: 180px;
+    display: flex;
+    flex-direction: column;
+    max-height: 220px;
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 10px 12px;
     background: var(--white);
 }
 
 .dir-usuarios-programa-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 12px;
     font-size: 13px;
     color: var(--text-primary);
+    cursor: pointer;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background-color .15s;
+}
+
+.dir-usuarios-programa-item:last-child {
+    border-bottom: none;
+}
+
+.dir-usuarios-programa-item:hover {
+    background: var(--surface);
+}
+
+.dir-usuarios-programa-item:has(input:checked) {
+    background: rgba(26, 191, 160, .08);
+    color: var(--navy);
+    font-weight: 600;
+}
+
+.dir-usuarios-programa-item input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--teal);
     cursor: pointer;
 }
 

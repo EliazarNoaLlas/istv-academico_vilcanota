@@ -21,7 +21,8 @@
                 <img src="{{ asset('img/login/college-svgrepo-com.svg') }}" alt="" aria-hidden="true"> Sistema académico
             </span>
             <span class="auth-visual-module">
-                <img src="{{ asset('img/login/'.rawurlencode('teacher-svgrepo-com 2.svg')) }}" alt="" aria-hidden="true"> Docentes
+                <img src="{{ asset('img/login/'.rawurlencode('teacher-svgrepo-com 2.svg')) }}" alt=""
+                     aria-hidden="true"> Docentes
             </span>
             <span class="auth-visual-module">
                 <img src="{{ asset('img/login/blackboard-svgrepo-com.svg') }}" alt="" aria-hidden="true"> Horarios

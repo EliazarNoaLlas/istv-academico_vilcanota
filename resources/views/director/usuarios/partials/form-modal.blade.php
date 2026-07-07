@@ -132,8 +132,8 @@
                         <div class="dir-usuarios-programas-lista" id="dir-usuarios-programas-lista">
                             @foreach ($programas as $programa)
                                 <label class="dir-usuarios-programa-item">
-                                    <input type="checkbox" name="programas[]" value="{{ $programa->id_programa }}">
                                     <span>{{ $programa->nombre }}</span>
+                                    <input type="checkbox" name="programas[]" value="{{ $programa->id_programa }}">
                                 </label>
                             @endforeach
                         </div>

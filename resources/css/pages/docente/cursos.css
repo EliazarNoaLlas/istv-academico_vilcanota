@@ -1,0 +1,117 @@
+/* Especifico de docente/cursos. Prefijo obligatorio: .doc-cursos-* */
+.doc-cursos-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.doc-cursos-periodo {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.doc-cursos-toolbar .input-inline {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--white);
+    color: var(--text-primary);
+}
+
+.doc-cursos-toolbar .doc-cursos-search {
+    flex: 1;
+    min-width: 220px;
+}
+
+.doc-cursos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+}
+
+.doc-course-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.doc-course-card h3 {
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--navy);
+    margin: 0;
+}
+
+.doc-course-card .doc-course-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.doc-course-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.doc-course-stat {
+    text-align: center;
+}
+
+.doc-course-stat strong {
+    display: block;
+    font-size: 18px;
+    color: var(--navy);
+    font-family: var(--font-display);
+}
+
+.doc-course-stat span {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+
+.doc-course-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.doc-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.doc-empty-state i {
+    font-size: 42px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: block;
+}
+
+.doc-empty-state h3 {
+    font-family: var(--font-display);
+    color: var(--navy);
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
+.doc-empty-state p {
+    color: var(--text-muted);
+    font-size: 13px;
+    max-width: 420px;
+    margin: 0 auto;
+}

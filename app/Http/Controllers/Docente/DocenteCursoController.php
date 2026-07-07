@@ -3,23 +3,30 @@
 namespace App\Http\Controllers\Docente;
 
 use App\Http\Controllers\Controller;
-use App\Services\Academic\DocenteService;
+use App\Services\Docente\DocentePortalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class DocenteCursoController extends Controller
 {
-    public function __construct(private DocenteService $docentes) {}
+    public function __construct(private DocentePortalService $portal) {}
 
-    /** Reemplaza a docente_cursos.php: usa la sesion autenticada, no un parametro libre. */
+    public function page(): View
+    {
+        return view('docente.cursos.index');
+    }
+
+    /** Cursos asignados por cursos.id_docente, con metricas reales (estudiantes, notas, asistencia, portafolio). */
     public function index(Request $request): JsonResponse
     {
-        $idDocente = $request->user()->docente?->id_docente;
+        $docente = $this->portal->getDocenteActual($request->user());
+        $periodo = $this->portal->getPeriodoActivo();
 
-        if (! $idDocente) {
-            return response()->json(['ok' => false, 'mensaje' => 'El usuario no tiene un docente asociado.'], 422);
-        }
-
-        return response()->json(['ok' => true, 'cursos' => $this->docentes->cursosDe($idDocente)]);
+        return response()->json([
+            'ok' => true,
+            'periodo_activo' => $periodo ? ['codigo' => $periodo->codigo, 'nombre' => $periodo->nombre] : null,
+            'cursos' => $this->portal->getCursosAsignados($docente, $periodo),
+        ]);
     }
 }

@@ -14,7 +14,7 @@ class InferirProgramaCursosCommand extends Command
 
     public function handle(): int
     {
-        $dryRun = (bool) $this->option('dry-run');
+        $dryRun = (bool)$this->option('dry-run');
         $programas = ProgramaEstudio::all();
 
         $cursos = Curso::whereNull('id_programa')->with('docente')->get();
@@ -24,14 +24,14 @@ class InferirProgramaCursosCommand extends Command
         foreach ($cursos as $curso) {
             $especialidad = $curso->docente?->especialidad;
 
-            if (! $especialidad) {
+            if (!$especialidad) {
                 $sinMatch++;
 
                 continue;
             }
 
             $coincidencias = $programas->filter(
-                fn ($p) => str_contains(mb_strtolower($p->nombre), mb_strtolower($especialidad))
+                fn($p) => str_contains(mb_strtolower($p->nombre), mb_strtolower($especialidad))
                     || str_contains(mb_strtolower($especialidad), mb_strtolower($p->nombre))
             );
 
@@ -45,14 +45,14 @@ class InferirProgramaCursosCommand extends Command
             $programa = $coincidencias->first();
             $this->line("Curso #{$curso->id_curso} ({$curso->nombre_curso}) -> {$programa->nombre}");
 
-            if (! $dryRun) {
+            if (!$dryRun) {
                 $curso->update(['id_programa' => $programa->id_programa]);
             }
 
             $asignados++;
         }
 
-        $this->info(($dryRun ? '[dry-run] ' : '')."Asignados: {$asignados}. Sin match seguro (quedan nulos): {$sinMatch}.");
+        $this->info(($dryRun ? '[dry-run] ' : '') . "Asignados: {$asignados}. Sin match seguro (quedan nulos): {$sinMatch}.");
 
         return self::SUCCESS;
     }

@@ -9,10 +9,16 @@ use App\Services\Academic\SesionAprendizajeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 
 class DocenteSesionController extends Controller
 {
     public function __construct(private SesionAprendizajeService $sesiones) {}
+
+    public function page(): View
+    {
+        return view('docente.sesiones.index');
+    }
 
     public function index(Request $request): JsonResponse
     {

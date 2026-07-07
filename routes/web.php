@@ -33,8 +33,12 @@ use App\Http\Controllers\Coordinador\CoordinadorHorarioController;
 use App\Http\Controllers\Coordinador\CoordinadorNotaController;
 use App\Http\Controllers\Coordinador\CoordinadorPortafolioController;
 use App\Http\Controllers\Coordinador\CoordinadorValidacionController;
+use App\Http\Controllers\Docente\DocenteAnaliticaController;
+use App\Http\Controllers\Docente\DocenteAsistenciaController;
 use App\Http\Controllers\Docente\DocenteCursoController;
 use App\Http\Controllers\Docente\DocenteDashboardController;
+use App\Http\Controllers\Docente\DocenteHorarioController;
+use App\Http\Controllers\Docente\DocenteNotaController;
 use App\Http\Controllers\Docente\DocentePortafolioController;
 use App\Http\Controllers\Docente\DocenteSesionController;
 use App\Http\Controllers\Notificaciones\NotificacionController;
@@ -105,6 +109,13 @@ Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix(
 
 Route::middleware(['auth', 'role:docente'])->prefix('docente')->name('docente.')->group(function () {
     Route::get('/dashboard', [DocenteDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/cursos', [DocenteCursoController::class, 'page'])->name('cursos.index');
+    Route::get('/horario', [DocenteHorarioController::class, 'page'])->name('horario.index');
+    Route::get('/analitica', [DocenteAnaliticaController::class, 'page'])->name('analitica.index');
+    Route::get('/notas', [DocenteNotaController::class, 'page'])->name('notas.index');
+    Route::get('/asistencia', [DocenteAsistenciaController::class, 'page'])->name('asistencia.index');
+    Route::get('/portafolio', [DocentePortafolioController::class, 'page'])->name('portafolio.index');
+    Route::get('/sesiones', [DocenteSesionController::class, 'page'])->name('sesiones.index');
 });
 
 /*
@@ -224,7 +235,12 @@ Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix(
 });
 
 Route::middleware(['auth', 'role:docente'])->prefix('api/docente')->group(function () {
+    Route::get('/dashboard', [DocenteDashboardController::class, 'data']);
     Route::get('/cursos', [DocenteCursoController::class, 'index']);
+    Route::get('/horario', [DocenteHorarioController::class, 'data']);
+    Route::get('/notas', [DocenteNotaController::class, 'data']);
+    Route::post('/notas/guardar', [DocenteNotaController::class, 'guardar']);
+    Route::post('/notas/cerrar-acta', [DocenteNotaController::class, 'cerrarActa']);
     Route::get('/portafolio', [DocentePortafolioController::class, 'index']);
     Route::post('/portafolio', [DocentePortafolioController::class, 'store']);
     Route::get('/sesiones', [DocenteSesionController::class, 'index']);
