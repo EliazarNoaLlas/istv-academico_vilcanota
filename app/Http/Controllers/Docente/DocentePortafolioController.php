@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\Docente;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Portafolios\UploadPortafolioRequest;
-use App\Models\Curso;
-use App\Services\Docente\DocentePortalService;
 use App\Http\Requests\Docente\SubirPortafolioDocenteRequest;
 use App\Models\PortafolioDocumento;
+use App\Services\Docente\DocentePortalService;
 use App\Services\Portafolios\PortafolioDocumentoService;
 use App\Services\Portafolios\PortafolioUploadService;
 use Illuminate\Http\JsonResponse;
@@ -37,22 +35,14 @@ class DocentePortafolioController extends Controller
         ]);
     }
 
-    /** Resumen del portafolio (silabos, sesiones, evidencias) del docente autenticado. */
+    /** Documentos (silabo/evidencia) del docente autenticado, para la grilla de tarjetas de Mi Portafolio. */
     public function index(Request $request): JsonResponse
     {
         $docente = $this->portal->getDocenteActual($request->user());
-        // id_docente nunca se toma del cliente: se usa el perfil docente propio del
-        // usuario autenticado, para que un docente no pueda listar documentos de otro.
-        $miDocente = $request->user()->miDocentePropio();
-
-        if (! $miDocente) {
-            return response()->json(['ok' => false, 'mensaje' => 'Su cuenta no tiene un perfil docente asociado.'], 403);
-        }
-
         $idCurso = $request->query('id_curso') ? (int) $request->query('id_curso') : null;
-        $documentos = $this->documentos->listar(null, $idCurso, $request->query('tipo'), $miDocente->id_docente);
+        $documentos = $this->documentos->listar(null, $idCurso, $request->query('tipo'), $docente->id_docente);
 
-        return response()->json(['ok' => true] + $this->portal->getPortafolioResumen($docente));
+        return response()->json(['ok' => true, 'documentos' => $documentos]);
     }
 
     /** El docente y el periodo se resuelven en el servidor: nunca se confia en el valor enviado por el cliente. */
@@ -64,27 +54,12 @@ class DocentePortafolioController extends Controller
 
         abort_if(! $periodo, 422, 'No hay un periodo académico activo.');
 
-        $miDocente = $request->user()->miDocentePropio();
-
-        if (! $miDocente) {
-            return response()->json(['ok' => false, 'mensaje' => 'Su cuenta no tiene un perfil docente asociado.'], 403);
-        }
-
-        $curso = Curso::find((int) $request->validated('id_curso'));
-
-        if (! $curso || $curso->id_docente !== $miDocente->id_docente) {
-            return response()->json(['ok' => false, 'mensaje' => 'El curso no existe o no te pertenece.'], 404);
-        }
-
         try {
             $documento = $this->subida->subir(
                 $request->file('documento'),
                 $docente->id_docente,
                 $curso->id_curso,
                 $periodo->id_periodo,
-                $miDocente->id_docente,
-                (int) $request->validated('id_curso'),
-                (int) $request->validated('id_periodo'),
                 $request->validated('tipo'),
                 $request->validated('titulo'),
             );

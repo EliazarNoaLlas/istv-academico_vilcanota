@@ -1,1 +1,103 @@
 /* Ver resources/css/roles/coordinador.css. Prefijo obligatorio: .jua-* */
+.jua-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.jua-hero {
+    padding: 18px 22px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--navy), #1a3a6b);
+    border-radius: var(--radius);
+}
+
+.jua-hero small {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    opacity: .72;
+}
+
+.jua-hero h2 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 800;
+    font-family: var(--font-display);
+}
+
+.jua-hero p {
+    margin: 0;
+    font-size: 13px;
+    opacity: .78;
+}
+
+.jua-programas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.jua-programa-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.jua-programa-icono {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    background: rgba(11, 28, 58, .08);
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.jua-programa-head strong {
+    display: block;
+    font-size: 14px;
+    color: var(--navy);
+}
+
+.jua-programa-head small {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.jua-programa-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    text-align: center;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.jua-programa-stats strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 18px;
+    color: var(--navy);
+}
+
+.jua-programa-stats span {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+
+.jua-programa-footer {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}

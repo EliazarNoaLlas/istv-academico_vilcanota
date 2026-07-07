@@ -24,6 +24,10 @@ use App\Http\Controllers\Director\DirectorProgramaController;
 use App\Http\Controllers\Director\DirectorReporteController;
 use App\Http\Controllers\Director\DirectorUsuarioController;
 use App\Http\Controllers\Jua\JuaDashboardController;
+use App\Http\Controllers\Jua\JuaModuloController;
+use App\Http\Controllers\Jua\JuaProgramaController;
+use App\Http\Controllers\Jua\JuaUnidadDidacticaController;
+use App\Http\Controllers\Jua\JuaUsuarioController;
 use App\Http\Controllers\Coordinador\CoordinadorAnalyticsController;
 use App\Http\Controllers\Coordinador\CoordinadorConsolidadoController;
 use App\Http\Controllers\Coordinador\CoordinadorCursoController;
@@ -92,7 +96,11 @@ Route::middleware(['auth', 'role:director'])->prefix('director')->name('director
     Route::get('/alertas', [DirectorAlertaController::class, 'page'])->name('alertas.index');
     Route::get('/notificaciones', [DirectorNotificacionController::class, 'page'])->name('notificaciones.index');
     Route::get('/reportes', [DirectorReporteController::class, 'page'])->name('reportes.index');
+});
 
+// Itinerarios Formativos: lo usan Director y JUA por igual, por eso tiene su propio
+// grupo con ambos roles (en vez de vivir dentro del grupo exclusivo de Director).
+Route::middleware(['auth', 'role:director,jua'])->prefix('director')->name('director.')->group(function () {
     Route::get('/itinerarios', [DirectorItinerarioController::class, 'index'])->name('itinerarios.index');
     Route::post('/itinerarios', [DirectorItinerarioController::class, 'store'])->name('itinerarios.store');
     Route::get('/itinerarios/{itinerario}', [DirectorItinerarioController::class, 'show'])->name('itinerarios.show');
@@ -110,6 +118,21 @@ Route::middleware(['auth', 'role:director'])->prefix('director')->name('director
 
 Route::middleware(['auth', 'role:jua'])->prefix('jua')->name('jua.')->group(function () {
     Route::get('/dashboard', [JuaDashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/programas', [JuaProgramaController::class, 'index'])->name('programas.index');
+    Route::get('/unidades-didacticas', [JuaUnidadDidacticaController::class, 'index'])->name('unidades.index');
+    Route::get('/usuarios', [JuaUsuarioController::class, 'index'])->name('usuarios.index');
+
+    // Modulos aun no construidos: una sola vista "en construccion" reutilizable,
+    // para que el menu completo ya navegue sin enlaces rotos ni 404 crudos.
+    Route::get('/mallas-curriculares', [JuaModuloController::class, 'stub'])->name('mallas.index');
+    Route::get('/creditos-horas', [JuaModuloController::class, 'stub'])->name('creditos.index');
+    Route::get('/calendario-academico', [JuaModuloController::class, 'stub'])->name('calendario.index');
+    Route::get('/consolidados', [JuaModuloController::class, 'stub'])->name('consolidados.index');
+    Route::get('/reportes', [JuaModuloController::class, 'stub'])->name('reportes.index');
+    Route::get('/indicadores', [JuaModuloController::class, 'stub'])->name('indicadores.index');
+    Route::get('/parametros', [JuaModuloController::class, 'stub'])->name('parametros.index');
+    Route::get('/roles-permisos', [JuaModuloController::class, 'stub'])->name('roles.index');
 });
 
 Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix('coordinador')->name('coordinador.')->group(function () {

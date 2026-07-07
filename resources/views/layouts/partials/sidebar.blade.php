@@ -128,8 +128,49 @@
                 <i class="bi bi-file-earmark-text ni"></i> Sesiones de Aprendizaje
             </a>
         @endif
-        {{-- Los demas modulos (alertas, reportes, configuracion...) se
-             conectan cuando su ruta real exista. --}}
+        @if ($rol === 'jua')
+            <div class="nav-section-title">Gestión Académica</div>
+            <a href="{{ route('jua.programas.index') }}" class="nav-item {{ request()->routeIs('jua.programas.*') ? 'active' : '' }}">
+                <i class="bi bi-mortarboard ni"></i> Programas de Estudio
+            </a>
+            <a href="{{ route('director.itinerarios.index') }}" class="nav-item {{ request()->routeIs('director.itinerarios.*') ? 'active' : '' }}">
+                <i class="bi bi-layers ni"></i> Itinerarios Formativos
+            </a>
+            <a href="{{ route('jua.unidades.index') }}" class="nav-item {{ request()->routeIs('jua.unidades.*') ? 'active' : '' }}">
+                <i class="bi bi-journal-text ni"></i> Unidades Didácticas
+            </a>
+            <a href="{{ route('jua.mallas.index') }}" class="nav-item {{ request()->routeIs('jua.mallas.*') ? 'active' : '' }}">
+                <i class="bi bi-diagram-3 ni"></i> Mallas Curriculares
+            </a>
+            <a href="{{ route('jua.creditos.index') }}" class="nav-item {{ request()->routeIs('jua.creditos.*') ? 'active' : '' }}">
+                <i class="bi bi-clock-history ni"></i> Créditos y Horas
+            </a>
+            <a href="{{ route('jua.calendario.index') }}" class="nav-item {{ request()->routeIs('jua.calendario.*') ? 'active' : '' }}">
+                <i class="bi bi-calendar3 ni"></i> Calendario Académico
+            </a>
+
+            <div class="nav-section-title">Reportes y Analítica</div>
+            <a href="{{ route('jua.consolidados.index') }}" class="nav-item {{ request()->routeIs('jua.consolidados.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-bar-graph ni"></i> Consolidados
+            </a>
+            <a href="{{ route('jua.reportes.index') }}" class="nav-item {{ request()->routeIs('jua.reportes.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-text ni"></i> Reportes
+            </a>
+            <a href="{{ route('jua.indicadores.index') }}" class="nav-item {{ request()->routeIs('jua.indicadores.*') ? 'active' : '' }}">
+                <i class="bi bi-graph-up ni"></i> Indicadores
+            </a>
+
+            <div class="nav-section-title">Configuración</div>
+            <a href="{{ route('jua.parametros.index') }}" class="nav-item {{ request()->routeIs('jua.parametros.*') ? 'active' : '' }}">
+                <i class="bi bi-sliders ni"></i> Parámetros
+            </a>
+            <a href="{{ route('jua.usuarios.index') }}" class="nav-item {{ request()->routeIs('jua.usuarios.*') ? 'active' : '' }}">
+                <i class="bi bi-people ni"></i> Usuarios
+            </a>
+            <a href="{{ route('jua.roles.index') }}" class="nav-item {{ request()->routeIs('jua.roles.*') ? 'active' : '' }}">
+                <i class="bi bi-shield-lock ni"></i> Roles y Permisos
+            </a>
+        @endif
     </div>
 
     <div class="sidebar-footer">
