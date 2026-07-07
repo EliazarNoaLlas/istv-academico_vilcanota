@@ -30,6 +30,11 @@ class ProgramaEstudio extends Model
         return $this->hasMany(Curso::class, 'id_programa');
     }
 
+    public function itinerarios(): HasMany
+    {
+        return $this->hasMany(ItinerarioFormativo::class, 'id_programa');
+    }
+
     public function horarios(): HasMany
     {
         return $this->hasMany(Horario::class, 'id_programa');

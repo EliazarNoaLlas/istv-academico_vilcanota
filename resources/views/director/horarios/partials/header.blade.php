@@ -3,7 +3,8 @@
     <div>
         <small>DIRECCIÓN ACADÉMICA</small>
         <h2>Horarios Académicos</h2>
-        <p>Programa: <strong id="dir-horarios-programa-actual">Todos los programas</strong> · Periodo: <strong>{{ $periodos->firstWhere('estado', 'ACTIVO')?->codigo ?? '—' }}</strong></p>
+        <p>Programa: <strong id="dir-horarios-programa-actual">Todos los programas</strong> · Periodo:
+            <strong>{{ $periodos->firstWhere('estado', 'ACTIVO')?->codigo ?? '—' }}</strong></p>
     </div>
     <div class="coord-horarios-actions">
         <button type="button" id="dir-horarios-nuevo" class="c-btn c-btn-primary c-btn-sm">
@@ -27,5 +28,6 @@
     </div>
 </div>
 <div class="coord-horarios-guardar-hint" id="dir-horarios-guardar-hint">
-    <i class="bi bi-pencil-square"></i> Hay cambios sin guardar — arrastra los bloques que necesites y presiona "Guardar horario completo" para aplicarlos.
+    <i class="bi bi-pencil-square"></i> Hay cambios sin guardar — arrastra los bloques que necesites y presiona "Guardar
+    horario completo" para aplicarlos.
 </div>

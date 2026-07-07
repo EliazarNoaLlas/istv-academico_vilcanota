@@ -1,0 +1,1101 @@
+/* Específico de director/itinerarios. Prefijo obligatorio: .dir-iti-* */
+
+/* Paleta local del módulo (diseño documento oficial MINEDU/ISTV) */
+.dir-iti-shell {
+    --iti-azul: #1C6EA4;
+    --iti-azul-cabecera: #14587F;
+    --iti-celeste: #DCEEFA;
+    --iti-verde: #DFF3E3;
+    --iti-esrt: #BFE3F5;
+    --iti-borde: #9FB4C2;
+    --iti-tinta: #16232C;
+    --iti-tinta-suave: #4C6470;
+    --iti-fondo: #EEF3F6;
+    --iti-peligro: #B3261E;
+    --iti-exito: #1E8E3E;
+    --iti-radio: 8px;
+    --iti-sombra: 0 2px 10px rgba(20, 88, 127, 0.10);
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ---------- Alertas flash ---------- */
+.dir-iti-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+}
+
+.dir-iti-alert.is-success {
+    background: #E9F7EC;
+    color: #1E7A38;
+    border: 1px solid #BFE6C6;
+}
+
+.dir-iti-alert.is-error {
+    background: #FDEEEC;
+    color: var(--iti-peligro, #B3261E);
+    border: 1px solid #F0C6C1;
+}
+
+.dir-iti-alert ul {
+    margin: 0;
+    padding-left: 16px;
+}
+
+/* ---------- Dashboard (index) ---------- */
+.dir-iti-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.dir-iti-hero-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dir-iti-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+}
+
+.dir-iti-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 16px;
+}
+
+.dir-iti-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(11, 28, 58, 0.06);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.dir-iti-card:hover {
+    box-shadow: 0 6px 18px rgba(11, 28, 58, 0.12);
+    transform: translateY(-2px);
+}
+
+.dir-iti-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dir-iti-card-programa {
+    color: var(--gold);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 11px;
+}
+
+.dir-iti-card-head h3 {
+    margin: 4px 0;
+    font-size: 16px;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.dir-iti-card-oficio {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.dir-iti-card-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.dir-iti-card-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+}
+
+.dir-iti-card-stats strong {
+    display: block;
+    font-size: 17px;
+    color: var(--navy);
+}
+
+.dir-iti-card-stats span {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.dir-iti-card-preview {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.dir-iti-card-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.dir-iti-card-preview th {
+    background: var(--navy);
+    color: #fff;
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.dir-iti-card-preview td {
+    padding: 5px 8px;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.dir-iti-card-preview-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.dir-iti-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--dot-color, #fff);
+    border: 1px solid var(--iti-borde, #9FB4C2);
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.dir-iti-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.dir-iti-card-footer small {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.dir-iti-card-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.dir-iti-empty {
+    text-align: center;
+    padding: 48px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.dir-iti-empty i {
+    font-size: 40px;
+    color: var(--text-muted);
+}
+
+.dir-iti-empty h3 {
+    color: var(--text-primary);
+}
+
+.dir-iti-empty p {
+    color: var(--text-secondary);
+    max-width: 420px;
+}
+
+/* ---------- Modal nuevo itinerario ---------- */
+.dir-iti-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 35, 44, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.dir-iti-modal-overlay.is-open {
+    display: flex;
+}
+
+.dir-iti-modal {
+    background: #fff;
+    border-radius: 10px;
+    width: min(640px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 22px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+.dir-iti-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.dir-iti-modal-head h3 {
+    color: var(--navy);
+    font-size: 17px;
+}
+
+.dir-iti-modal-close {
+    border: none;
+    background: var(--surface);
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.dir-iti-modal-form .form-group {
+    margin-bottom: 12px;
+}
+
+.dir-iti-modal-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.dir-iti-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* ===================== CABECERA INSTITUCIONAL ===================== */
+.dir-iti-inst-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: #fff;
+    border: 1px solid var(--iti-borde);
+    border-bottom: 3px solid var(--iti-azul);
+    border-radius: var(--iti-radio);
+    padding: 14px 24px;
+    box-shadow: var(--iti-sombra);
+}
+
+.dir-iti-inst-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.dir-iti-inst-logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+}
+
+.dir-iti-inst-peru {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--iti-tinta);
+    letter-spacing: 0.5px;
+}
+
+.dir-iti-inst-minedu {
+    font-size: 11px;
+    color: var(--iti-tinta-suave);
+}
+
+.dir-iti-inst-titulos {
+    flex: 1;
+    text-align: center;
+}
+
+.dir-iti-inst-titulos h1 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--iti-azul-cabecera);
+    letter-spacing: 0.2px;
+}
+
+.dir-iti-inst-titulos h2 {
+    margin: 2px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--iti-tinta);
+}
+
+.dir-iti-inst-titulos h3 {
+    margin: 2px 0 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--iti-tinta);
+    text-transform: uppercase;
+}
+
+.dir-iti-inst-oficio {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--iti-tinta-suave);
+}
+
+.dir-iti-inst-logo-istv img {
+    max-width: 52px;
+    max-height: 52px;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+/* ===================== BARRA DE ACCIONES ===================== */
+.dir-iti-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid var(--iti-borde);
+    border-radius: var(--iti-radio);
+    padding: 10px 16px;
+    position: sticky;
+    top: 8px;
+    z-index: 50;
+    box-shadow: var(--iti-sombra);
+}
+
+.dir-iti-toolbar-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--iti-tinta);
+}
+
+.dir-iti-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+
+.dir-iti-toolbar form {
+    display: inline;
+}
+
+/* Botones del módulo */
+.dir-iti-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid transparent;
+    border-radius: var(--iti-radio, 8px);
+    padding: 7px 13px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.05s;
+}
+
+.dir-iti-btn:active {
+    transform: translateY(1px);
+}
+
+.dir-iti-btn.primary {
+    background: var(--iti-azul, #1C6EA4);
+    color: #fff;
+}
+
+.dir-iti-btn.primary:hover {
+    background: var(--iti-azul-cabecera, #14587F);
+}
+
+.dir-iti-btn.success {
+    background: var(--iti-exito, #1E8E3E);
+    color: #fff;
+}
+
+.dir-iti-btn.success:hover {
+    background: #15702f;
+}
+
+.dir-iti-btn.outline {
+    background: #fff;
+    color: var(--iti-azul-cabecera, #14587F);
+    border-color: var(--iti-borde, #9FB4C2);
+}
+
+.dir-iti-btn.outline:hover {
+    background: var(--iti-celeste, #DCEEFA);
+}
+
+.dir-iti-btn.danger-outline {
+    background: #fff;
+    color: var(--iti-peligro, #B3261E);
+    border-color: #E2B3AF;
+}
+
+.dir-iti-btn.danger-outline:hover {
+    background: #FBEAE9;
+}
+
+.dir-iti-btn.ghost {
+    background: transparent;
+    color: var(--iti-tinta-suave, #4C6470);
+}
+
+.dir-iti-btn.ghost:hover {
+    background: #EDF2F5;
+}
+
+.dir-iti-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Badges de estado */
+.dir-iti-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.dir-iti-badge.is-borrador { background: #FFF3CD; color: #8A6D1D; }
+.dir-iti-badge.is-activo { background: #DCF3E1; color: #1E7A38; }
+.dir-iti-badge.is-archivado { background: #E2E8F0; color: #475569; }
+
+/* ===================== CUERPO: TABLA + PANEL ===================== */
+.dir-iti-body-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: 16px;
+    align-items: start;
+}
+
+.dir-iti-table-wrap {
+    background: #fff;
+    border: 1px solid var(--iti-borde);
+    border-radius: var(--iti-radio);
+    box-shadow: var(--iti-sombra);
+    overflow: hidden;
+}
+
+.dir-iti-table-scroll {
+    overflow: auto;
+    max-height: 74vh;
+}
+
+.dir-iti-table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 1180px;
+    font-size: 13px;
+}
+
+.dir-iti-table th {
+    background: var(--iti-azul);
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 8px 6px;
+    border: 1px solid var(--iti-azul-cabecera);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    text-align: center;
+}
+
+.dir-iti-table thead tr:nth-child(2) th {
+    top: 33px;
+}
+
+.dir-iti-table td {
+    border: 1px solid var(--iti-borde);
+    padding: 6px 8px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+    background: var(--iti-row, #fff);
+}
+
+.dir-iti-col-unidad { min-width: 230px; }
+.dir-iti-col-num { min-width: 46px; }
+
+.dir-iti-cell-nombre {
+    text-align: left;
+    min-width: 230px;
+    font-weight: 600;
+    color: var(--iti-tinta);
+}
+
+/* Columna vertical del módulo */
+.dir-iti-cell-modulo {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-weight: 800;
+    font-size: 12px;
+    background: var(--iti-azul) !important;
+    color: #fff;
+    letter-spacing: 0.4px;
+    max-width: 46px;
+    padding: 10px 6px;
+}
+
+.dir-iti-modulo-nombre {
+    display: block;
+}
+
+.dir-iti-modulo-competencia {
+    display: block;
+    font-weight: 500;
+    font-size: 10.5px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-top: 6px;
+}
+
+/* Filas ESRT en negrita como el documento oficial */
+.dir-iti-tipo-esrt td:not(.dir-iti-cell-modulo) {
+    font-weight: 700;
+}
+
+/* Selección */
+.dir-iti-table.is-editable .dir-iti-row-unidad {
+    cursor: pointer;
+}
+
+.dir-iti-table.is-editable .dir-iti-row-unidad:hover td:not(.dir-iti-cell-modulo) {
+    filter: brightness(0.96);
+}
+
+.dir-iti-row-unidad.is-selected td {
+    outline: 2px solid var(--iti-azul);
+    outline-offset: -2px;
+}
+
+/* Celdas editables inline */
+.dir-iti-editable {
+    outline: none;
+    border-bottom: 1px dashed transparent;
+    cursor: text;
+    border-radius: 4px;
+    padding: 1px 3px;
+    display: inline-block;
+    min-width: 14px;
+}
+
+.dir-iti-editable:hover {
+    border-bottom-color: var(--iti-azul);
+}
+
+.dir-iti-editable:focus {
+    background: #FFF7D6;
+    border-bottom-color: var(--iti-azul);
+}
+
+/* Celdas calculadas (solo lectura) */
+.dir-iti-cell-calc {
+    color: var(--iti-tinta-suave);
+    font-style: italic;
+    background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.025), rgba(0, 0, 0, 0.025) 4px, transparent 4px, transparent 8px);
+}
+
+/* Celdas de ciclo */
+.dir-iti-cell-ciclo.is-activo {
+    font-weight: 700;
+    color: var(--iti-azul-cabecera);
+}
+
+.dir-iti-cell-ciclo.is-vacio {
+    color: #C7D3D9;
+    font-weight: 400;
+}
+
+.dir-iti-cell-vacio {
+    color: var(--iti-tinta-suave);
+    font-style: italic;
+    text-align: left;
+}
+
+/* Filas de totales */
+.dir-iti-row-total td {
+    background: var(--iti-azul) !important;
+    color: #fff;
+    font-weight: 800;
+    font-size: 12px;
+}
+
+.dir-iti-row-total-general td {
+    background: var(--iti-azul-cabecera) !important;
+    font-size: 12.5px;
+}
+
+/* ===================== PANEL LATERAL ===================== */
+.dir-iti-side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: sticky;
+    top: 64px;
+}
+
+.dir-iti-panel-card {
+    background: #fff;
+    border: 1px solid var(--iti-borde);
+    border-radius: var(--iti-radio);
+    box-shadow: var(--iti-sombra);
+    overflow: hidden;
+}
+
+.dir-iti-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #F3F8FB;
+    border-bottom: 1px solid var(--iti-borde);
+    padding: 10px 14px;
+}
+
+.dir-iti-panel-header h4 {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--iti-azul-cabecera);
+    flex: 1;
+}
+
+.dir-iti-icon-btn {
+    background: transparent;
+    border: none;
+    font-size: 15px;
+    color: var(--iti-tinta-suave);
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.dir-iti-icon-btn:hover {
+    background: #E2ECF1;
+}
+
+.dir-iti-panel-body {
+    padding: 14px;
+    font-size: 13px;
+}
+
+.dir-iti-empty-hint {
+    color: var(--iti-tinta-suave);
+    font-size: 12.5px;
+    margin: 0;
+}
+
+.dir-iti-field {
+    margin-bottom: 12px;
+}
+
+.dir-iti-field label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--iti-tinta-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+}
+
+.dir-iti-field input,
+.dir-iti-field select,
+.dir-iti-field textarea {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid var(--iti-borde);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--iti-tinta);
+}
+
+.dir-iti-field input[readonly] {
+    background: #F0F4F6;
+    color: var(--iti-tinta-suave);
+    font-style: italic;
+}
+
+.dir-iti-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+/* Selector de ciclo tipo chips */
+.dir-iti-ciclo-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.dir-iti-ciclo-picker label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--iti-tinta);
+    text-transform: none;
+    background: #F0F4F6;
+    border: 1px solid var(--iti-borde);
+    border-radius: 6px;
+    padding: 4px 9px;
+    cursor: pointer;
+    margin-bottom: 0;
+    letter-spacing: 0;
+}
+
+.dir-iti-ciclo-picker input {
+    margin: 0;
+    width: auto;
+}
+
+.dir-iti-ciclo-picker label.checked {
+    background: var(--iti-azul);
+    color: #fff;
+    border-color: var(--iti-azul);
+}
+
+.dir-iti-panel-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.dir-iti-panel-actions .dir-iti-btn {
+    flex: 1;
+    justify-content: center;
+}
+
+/* ===================== VALIDACIÓN ===================== */
+.dir-iti-valid-ok {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #E9F7EC;
+    border: 1px solid #BFE6C6;
+    color: #1E7A38;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.dir-iti-valid-item {
+    border: 1px solid #F0C6C1;
+    background: #FDEEEC;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+
+.dir-iti-valid-item.is-warning {
+    border-color: #EBD9A9;
+    background: #FDF7E7;
+}
+
+.dir-iti-valid-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--iti-peligro);
+    font-weight: 800;
+    font-size: 12.5px;
+    margin-bottom: 4px;
+}
+
+.dir-iti-valid-item.is-warning .dir-iti-valid-title {
+    color: #8A6D1D;
+}
+
+.dir-iti-valid-ambito {
+    font-size: 12px;
+    color: var(--iti-tinta-suave);
+    margin-bottom: 4px;
+}
+
+.dir-iti-valid-detalle {
+    font-size: 12px;
+    color: var(--iti-tinta);
+    margin: 4px 0;
+}
+
+.dir-iti-compare-row {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.dir-iti-compare-box {
+    flex: 1;
+    background: #fff;
+    border: 1px solid var(--iti-borde);
+    border-radius: 6px;
+    padding: 6px 8px;
+    text-align: center;
+}
+
+.dir-iti-compare-label {
+    font-size: 10.5px;
+    color: var(--iti-tinta-suave);
+    text-transform: uppercase;
+}
+
+.dir-iti-compare-value {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--iti-tinta);
+}
+
+.dir-iti-compare-neq {
+    font-size: 18px;
+    color: var(--iti-peligro);
+    align-self: center;
+}
+
+.dir-iti-valid-recomendacion {
+    font-size: 12px;
+    color: var(--iti-tinta-suave);
+    line-height: 1.4;
+    margin-top: 4px;
+}
+
+.dir-iti-valid-recomendacion strong {
+    color: var(--iti-tinta);
+}
+
+.dir-iti-goto-btn {
+    margin-top: 8px;
+    width: 100%;
+    justify-content: center;
+}
+
+/* Leyenda de colores */
+.dir-iti-leyenda {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--iti-tinta-suave);
+    background: #fff;
+    border: 1px solid var(--iti-borde);
+    border-radius: var(--iti-radio);
+    padding: 10px 14px;
+}
+
+/* Datos generales (show) */
+.dir-iti-datos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0;
+}
+
+.dir-iti-datos div {
+    background: #F0F4F6;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.dir-iti-datos dt {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--iti-tinta-suave);
+    letter-spacing: 0.03em;
+}
+
+.dir-iti-datos dd {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--iti-azul-cabecera);
+    margin: 0;
+}
+
+.dir-iti-descripcion {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--iti-tinta-suave);
+}
+
+/* Formulario meta */
+.dir-iti-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.dir-iti-meta-grid .dir-iti-field {
+    margin-bottom: 0;
+}
+
+.dir-iti-meta-wide {
+    grid-column: span 2;
+}
+
+/* ===================== BARRA DE ESTADO ===================== */
+.dir-iti-status-bar {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid var(--iti-borde);
+    border-radius: var(--iti-radio);
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--iti-tinta-suave);
+}
+
+.dir-iti-status-pill {
+    background: #FFF3CD;
+    color: #8A6D1D;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.dir-iti-status-pill.saved {
+    background: #DCF3E1;
+    color: #1E7A38;
+}
+
+.dir-iti-status-pill.error {
+    background: #FDEEEC;
+    color: #B3261E;
+}
+
+/* ===================== TOAST ===================== */
+.dir-iti-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #16232C;
+    color: #fff;
+    padding: 11px 20px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 1100;
+}
+
+.dir-iti-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.dir-iti-toast.warn {
+    background: #B3261E;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1280px) {
+    .dir-iti-kpis {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .dir-iti-body-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dir-iti-side-panel {
+        position: static;
+    }
+}
+
+@media (max-width: 720px) {
+    .dir-iti-kpis {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .dir-iti-meta-grid,
+    .dir-iti-modal-row,
+    .dir-iti-field-row {
+        grid-template-columns: 1fr;
+    }
+
+    .dir-iti-meta-wide {
+        grid-column: span 1;
+    }
+
+    .dir-iti-inst-header {
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .dir-iti-inst-titulos h1 {
+        font-size: 16px;
+    }
+}
+
+/* ===================== IMPRESIÓN ===================== */
+@media print {
+    .dir-iti-toolbar,
+    .dir-iti-side-panel,
+    .dir-iti-status-bar,
+    .dir-iti-alert,
+    .dir-iti-toast,
+    .dir-iti-meta-grid {
+        display: none !important;
+    }
+
+    .dir-iti-body-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dir-iti-table-scroll {
+        max-height: none;
+        overflow: visible;
+    }
+}

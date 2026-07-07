@@ -25,10 +25,16 @@ class Curso extends Model
     protected $fillable = [
         'id_docente',
         'id_programa',
+        'id_unidad_itinerario',
         'tipo_curso',
+        'tipo_formacion',
+        'color_hex',
+        'orden_malla',
+        'descripcion',
         'nombre_curso',
         'modulo',
         'semestre',
+        'ciclo',
         'creditos',
         'horas_teoria',
         'horas_practica',
@@ -47,6 +53,11 @@ class Curso extends Model
     public function programa(): BelongsTo
     {
         return $this->belongsTo(ProgramaEstudio::class, 'id_programa');
+    }
+
+    public function unidadItinerario(): BelongsTo
+    {
+        return $this->belongsTo(ItinerarioUnidadDidactica::class, 'id_unidad_itinerario');
     }
 
     public function horarios(): HasMany

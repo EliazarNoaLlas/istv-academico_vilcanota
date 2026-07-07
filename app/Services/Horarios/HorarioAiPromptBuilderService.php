@@ -37,17 +37,17 @@ class HorarioAiPromptBuilderService
         $cursos = Curso::query()
             ->where('id_programa', $filtro['id_programa'])
             ->where('estado', 'ACTIVO')
-            ->when($filtro['semestre'] ?? null, fn ($q) => $q->where('semestre', $filtro['semestre']))
+            ->when($filtro['semestre'] ?? null, fn($q) => $q->where('semestre', $filtro['semestre']))
             ->get()
-            ->map(fn (Curso $curso) => [
+            ->map(fn(Curso $curso) => [
                 'id_curso' => $curso->id_curso,
                 'nombre_curso' => $curso->nombre_curso,
                 'modulo' => $curso->modulo,
                 'semestre' => $curso->semestre,
                 'id_docente' => $curso->id_docente,
-                'horas_teoria' => (float) $curso->horas_teoria,
-                'horas_practica' => (float) $curso->horas_practica,
-                'total_horas' => (float) $curso->total_horas,
+                'horas_teoria' => (float)$curso->horas_teoria,
+                'horas_practica' => (float)$curso->horas_practica,
+                'total_horas' => (float)$curso->total_horas,
             ])->values()->all();
 
         $idDocentesDelPrograma = array_values(array_unique(array_filter(array_column($cursos, 'id_docente'))));
@@ -56,10 +56,10 @@ class HorarioAiPromptBuilderService
             ->where('estado_academico', 'ACTIVO')
             ->where(function ($q) use ($idDocentesDelPrograma, $filtro) {
                 $q->whereIn('id_docente', $idDocentesDelPrograma)
-                    ->orWhereHas('asignacionesPrograma', fn ($qq) => $qq->where('id_programa', $filtro['id_programa']));
+                    ->orWhereHas('asignacionesPrograma', fn($qq) => $qq->where('id_programa', $filtro['id_programa']));
             })
             ->get()
-            ->map(fn (Docente $docente) => [
+            ->map(fn(Docente $docente) => [
                 'id_docente' => $docente->id_docente,
                 'especialidad' => $docente->especialidad,
                 'tipo_docente' => $docente->tipo_docente,
@@ -70,7 +70,7 @@ class HorarioAiPromptBuilderService
 
         $aulas = Aula::where('estado', 'DISPONIBLE')
             ->get()
-            ->map(fn (Aula $aula) => [
+            ->map(fn(Aula $aula) => [
                 'id_aula' => $aula->id_aula,
                 'codigo' => $aula->codigo,
                 'tipo' => $aula->tipo,
@@ -78,7 +78,7 @@ class HorarioAiPromptBuilderService
             ])->values()->all();
 
         $catalogo = app(HorarioCatalogService::class)->obtener();
-        $bloques = array_values(array_filter($catalogo['bloques_horario'], fn ($b) => empty($b['receso'])));
+        $bloques = array_values(array_filter($catalogo['bloques_horario'], fn($b) => empty($b['receso'])));
 
         return [
             'id_programa' => $filtro['id_programa'],
@@ -89,7 +89,7 @@ class HorarioAiPromptBuilderService
             'aulas' => $aulas,
             'dias' => $catalogo['dias'],
             'bloques' => $bloques,
-            'docente_max_bloques' => (int) config('services.horarios_ai.docente_max_bloques', 20),
+            'docente_max_bloques' => (int)config('services.horarios_ai.docente_max_bloques', 20),
         ];
     }
 

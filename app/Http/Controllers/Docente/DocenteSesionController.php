@@ -8,8 +8,9 @@ use App\Models\SesionAprendizaje;
 use App\Services\Academic\SesionAprendizajeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocenteSesionController extends Controller
 {
@@ -63,5 +64,15 @@ class DocenteSesionController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    public function descargar(Request $request, SesionAprendizaje $sesion): StreamedResponse
+    {
+        $idDocente = $request->user()->miDocentePropio()?->id_docente;
+
+        abort_unless($sesion->id_docente === $idDocente, 403, 'Esta sesion no pertenece a este docente.');
+        abort_unless($sesion->archivo, 404, 'Esta sesion no tiene un archivo asociado.');
+
+        return Storage::disk('local')->download($sesion->archivo, $sesion->titulo);
     }
 }

@@ -16,6 +16,7 @@ use App\Http\Controllers\Director\DirectorDashboardController;
 use App\Http\Controllers\Director\DirectorDocenteController;
 use App\Http\Controllers\Director\DirectorEstudianteController;
 use App\Http\Controllers\Director\DirectorHorarioController;
+use App\Http\Controllers\Director\DirectorItinerarioController;
 use App\Http\Controllers\Director\DirectorNotaController;
 use App\Http\Controllers\Director\DirectorNotificacionController;
 use App\Http\Controllers\Director\DirectorPortafolioController;
@@ -91,6 +92,20 @@ Route::middleware(['auth', 'role:director'])->prefix('director')->name('director
     Route::get('/alertas', [DirectorAlertaController::class, 'page'])->name('alertas.index');
     Route::get('/notificaciones', [DirectorNotificacionController::class, 'page'])->name('notificaciones.index');
     Route::get('/reportes', [DirectorReporteController::class, 'page'])->name('reportes.index');
+
+    Route::get('/itinerarios', [DirectorItinerarioController::class, 'index'])->name('itinerarios.index');
+    Route::post('/itinerarios', [DirectorItinerarioController::class, 'store'])->name('itinerarios.store');
+    Route::get('/itinerarios/{itinerario}', [DirectorItinerarioController::class, 'show'])->name('itinerarios.show');
+    Route::get('/itinerarios/{itinerario}/editar', [DirectorItinerarioController::class, 'edit'])->name('itinerarios.edit');
+    Route::put('/itinerarios/{itinerario}', [DirectorItinerarioController::class, 'update'])->name('itinerarios.update');
+    Route::patch('/itinerarios/{itinerario}/unidades/{unidad}', [DirectorItinerarioController::class, 'updateUnidad'])->name('itinerarios.unidades.update');
+    Route::post('/itinerarios/{itinerario}/validar-totales', [DirectorItinerarioController::class, 'validarTotales'])->name('itinerarios.validar-totales');
+    Route::post('/itinerarios/{itinerario}/recalcular-totales', [DirectorItinerarioController::class, 'recalcularTotales'])->name('itinerarios.recalcular-totales');
+    Route::post('/itinerarios/{itinerario}/duplicar', [DirectorItinerarioController::class, 'duplicar'])->name('itinerarios.duplicar');
+    Route::patch('/itinerarios/{itinerario}/activar', [DirectorItinerarioController::class, 'activar'])->name('itinerarios.activar');
+    Route::patch('/itinerarios/{itinerario}/archivar', [DirectorItinerarioController::class, 'archivar'])->name('itinerarios.archivar');
+    Route::get('/itinerarios/{itinerario}/export/excel', [DirectorItinerarioController::class, 'exportExcel'])->name('itinerarios.export.excel');
+    Route::get('/itinerarios/{itinerario}/export/pdf', [DirectorItinerarioController::class, 'exportPdf'])->name('itinerarios.export.pdf');
 });
 
 Route::middleware(['auth', 'role:jua'])->prefix('jua')->name('jua.')->group(function () {
@@ -247,6 +262,7 @@ Route::middleware(['auth', 'role:docente'])->prefix('api/docente')->group(functi
     Route::get('/dashboard', [DocenteDashboardController::class, 'data']);
     Route::get('/cursos', [DocenteCursoController::class, 'index']);
     Route::get('/horario', [DocenteHorarioController::class, 'data']);
+    Route::get('/analitica', [DocenteAnaliticaController::class, 'data']);
     Route::get('/notas', [DocenteNotaController::class, 'data']);
     Route::post('/notas/guardar', [DocenteNotaController::class, 'guardar']);
     Route::post('/notas/cerrar-acta', [DocenteNotaController::class, 'cerrarActa']);
@@ -254,7 +270,10 @@ Route::middleware(['auth', 'role:docente'])->prefix('api/docente')->group(functi
     Route::post('/asistencia/guardar', [DocenteAsistenciaController::class, 'guardar']);
     Route::get('/portafolio', [DocentePortafolioController::class, 'index']);
     Route::post('/portafolio', [DocentePortafolioController::class, 'store']);
+    Route::delete('/portafolio/{documento}', [DocentePortafolioController::class, 'destroy']);
+    Route::get('/portafolio/{documento}/descargar', [DocentePortafolioController::class, 'descargar']);
     Route::get('/sesiones', [DocenteSesionController::class, 'index']);
     Route::post('/sesiones', [DocenteSesionController::class, 'store']);
     Route::delete('/sesiones/{sesion}', [DocenteSesionController::class, 'destroy']);
+    Route::get('/sesiones/{sesion}/descargar', [DocenteSesionController::class, 'descargar']);
 });

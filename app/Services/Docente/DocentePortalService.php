@@ -11,6 +11,7 @@ use App\Models\Horario;
 use App\Models\MatriculaCurso;
 use App\Models\Nota;
 use App\Models\PeriodoAcademico;
+use App\Models\PortafolioDocente;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,7 @@ class DocentePortalService
     /** Resuelve el docente autenticado y valida que su perfil academico este activo. */
     public function getDocenteActual(User $usuario): Docente
     {
-        $docente = $usuario->docente;
+        $docente = $usuario->miDocentePropio();
 
         abort_if(! $docente || $docente->estado_academico !== 'ACTIVO', 403, 'No tienes un perfil docente activo.');
 
@@ -368,5 +369,154 @@ class DocentePortalService
                 );
             }
         });
+    }
+
+    /**
+     * Resumen del portafolio del docente, limitado a las 3 secciones que le corresponden
+     * (SILABO, PLAN_SESION, EVIDENCIA). Evaluacion/instrumentos/asistencia/notas/actas son
+     * de uso exclusivo de coordinador/JUA y no se exponen aqui.
+     */
+    public function getPortafolioResumen(Docente $docente): array
+    {
+        $tiposSecciones = ['SILABO' => 'silabo', 'PLAN_SESION' => 'sesiones', 'EVIDENCIA' => 'evidencias'];
+        $periodo = $this->getPeriodoActivo();
+
+        $cursos = Curso::where('id_docente', $docente->id_docente)->where('estado', 'ACTIVO')->orderBy('nombre_curso')->get();
+
+        $portafolios = PortafolioDocente::where('id_docente', $docente->id_docente)
+            ->when($periodo, fn ($q) => $q->where('id_periodo', $periodo->id_periodo))
+            ->with(['documentos' => fn ($q) => $q->whereIn('tipo', array_keys($tiposSecciones))->orderByDesc('fecha_subida')])
+            ->get()
+            ->keyBy('id_curso');
+
+        $cursosData = $cursos->map(function (Curso $curso) use ($portafolios, $tiposSecciones) {
+            $portafolio = $portafolios->get($curso->id_curso);
+            $documentosPorTipo = $portafolio ? $portafolio->documentos->groupBy('tipo') : collect();
+
+            $secciones = collect($tiposSecciones)->mapWithKeys(function (string $clave, string $tipo) use ($documentosPorTipo) {
+                $docs = $documentosPorTipo->get($tipo, collect())->map(fn ($d) => [
+                    'id_documento' => $d->id_documento,
+                    'titulo' => $d->titulo,
+                    'estado' => $d->estado,
+                    'observacion' => $d->observacion,
+                    'fecha_subida' => $d->fecha_subida?->format('d/m/Y'),
+                ])->values();
+
+                return [$clave => ['documentos' => $docs, 'ultimo' => $docs->first()]];
+            });
+
+            return [
+                'id_curso' => $curso->id_curso,
+                'nombre_curso' => $curso->nombre_curso,
+                'id_portafolio' => $portafolio?->id_portafolio,
+                'secciones' => $secciones,
+            ];
+        })->values();
+
+        $todosDocumentos = $cursosData->flatMap(fn ($c) => collect($c['secciones'])->flatMap(fn ($s) => $s['documentos']));
+        $seccionesConDocumento = $cursosData->sum(fn ($c) => collect($c['secciones'])->filter(fn ($s) => $s['documentos']->isNotEmpty())->count());
+
+        return [
+            'periodo_activo' => $periodo ? ['codigo' => $periodo->codigo, 'nombre' => $periodo->nombre] : null,
+            'resumen_global' => [
+                'total_secciones' => $cursosData->count() * count($tiposSecciones),
+                'aprobados' => $todosDocumentos->where('estado', 'APROBADO')->count(),
+                'en_revision' => $todosDocumentos->where('estado', 'SUBIDO')->count(),
+                'observados' => $todosDocumentos->where('estado', 'OBSERVADO')->count(),
+                'pendientes' => $cursosData->count() * count($tiposSecciones) - $seccionesConDocumento,
+            ],
+            'cursos' => $cursosData,
+        ];
+    }
+
+    /** Analitica real del docente: rendimiento, distribucion de notas, asistencia, riesgo y evolucion por unidad. */
+    public function getAnalitica(Docente $docente): array
+    {
+        $notaMinima = (float) (ConfiguracionSistema::where('clave', 'nota_minima_aprobatoria')->value('valor') ?? 10.5);
+        $idsCursos = Curso::where('id_docente', $docente->id_docente)->where('estado', 'ACTIVO')->pluck('id_curso');
+        $cursos = $this->getCursosAsignados($docente);
+
+        $notas = Nota::whereHas('matriculaCurso', fn ($q) => $q->whereIn('id_curso', $idsCursos)->where('estado', 'EN_CURSO'))
+            ->whereNotNull('promedio')
+            ->pluck('promedio')
+            ->map(fn ($p) => (float) $p);
+
+        $evolucionPorUnidad = Nota::whereHas('matriculaCurso', fn ($q) => $q->whereIn('id_curso', $idsCursos)->where('estado', 'EN_CURSO'))
+            ->whereNotNull('promedio')
+            ->selectRaw('unidad, AVG(promedio) as promedio_unidad, COUNT(*) as total')
+            ->groupBy('unidad')
+            ->orderBy('unidad')
+            ->get()
+            ->map(fn ($row) => ['unidad' => $row->unidad, 'promedio' => round((float) $row->promedio_unidad, 1), 'total' => (int) $row->total])
+            ->values();
+
+        return [
+            'rendimiento_por_curso' => $cursos->map(fn ($c) => [
+                'curso' => $c->nombre_curso,
+                'promedio' => $c->notas_avg_promedio !== null ? round((float) $c->notas_avg_promedio, 1) : null,
+            ])->values(),
+            'asistencia_por_curso' => $cursos->map(fn ($c) => [
+                'curso' => $c->nombre_curso,
+                'asistencia_promedio' => $c->asistencia_promedio,
+            ])->values(),
+            'distribucion_notas' => [
+                '0-10' => $notas->filter(fn ($n) => $n <= 10)->count(),
+                '11-13' => $notas->filter(fn ($n) => $n >= 11 && $n <= 13)->count(),
+                '14-16' => $notas->filter(fn ($n) => $n >= 14 && $n <= 16)->count(),
+                '17-20' => $notas->filter(fn ($n) => $n >= 17)->count(),
+            ],
+            'aprobados_vs_desaprobados' => [
+                'aprobados' => $notas->filter(fn ($n) => $n >= $notaMinima)->count(),
+                'desaprobados' => $notas->filter(fn ($n) => $n < $notaMinima)->count(),
+            ],
+            'evolucion_por_unidad' => $evolucionPorUnidad,
+            'estudiantes_en_riesgo' => $this->calcularEstudiantesEnRiesgo($idsCursos, $notaMinima),
+        ];
+    }
+
+    /** Estudiantes con nota baja (< nota minima) o asistencia baja (< 70%) en algun curso del docente. */
+    private function calcularEstudiantesEnRiesgo(\Illuminate\Support\Collection $idsCursos, float $notaMinima): array
+    {
+        $matriculaCursos = MatriculaCurso::whereIn('id_curso', $idsCursos)
+            ->where('estado', 'EN_CURSO')
+            ->with(['matricula.estudiante', 'curso', 'notas'])
+            ->get();
+
+        $asistenciaPorEstudianteCurso = AsistenciaDetalle::query()
+            ->join('asistencia_sesiones', 'asistencia_sesiones.id_sesion', '=', 'asistencia_detalle.id_sesion')
+            ->whereIn('asistencia_sesiones.id_curso', $idsCursos)
+            ->selectRaw('asistencia_detalle.id_estudiante, asistencia_sesiones.id_curso, COUNT(*) as total, SUM(asistencia_detalle.estado = "PRESENTE") as presentes')
+            ->groupBy('asistencia_detalle.id_estudiante', 'asistencia_sesiones.id_curso')
+            ->get()
+            ->keyBy(fn ($r) => $r->id_estudiante.'-'.$r->id_curso);
+
+        return $matriculaCursos->map(function (MatriculaCurso $mc) use ($asistenciaPorEstudianteCurso, $notaMinima) {
+            $estudiante = $mc->matricula->estudiante;
+            $promedios = $mc->notas->pluck('promedio')->filter(fn ($p) => $p !== null)->map(fn ($p) => (float) $p);
+            $promedioEstudiante = $promedios->isNotEmpty() ? round($promedios->avg(), 1) : null;
+
+            $asis = $asistenciaPorEstudianteCurso->get($estudiante->id_estudiante.'-'.$mc->curso->id_curso);
+            $asistenciaPct = $asis && $asis->total > 0 ? round($asis->presentes / $asis->total * 100, 1) : null;
+
+            $motivos = [];
+            if ($promedioEstudiante !== null && $promedioEstudiante < $notaMinima) {
+                $motivos[] = 'Nota baja';
+            }
+            if ($asistenciaPct !== null && $asistenciaPct < 70) {
+                $motivos[] = 'Asistencia baja';
+            }
+
+            if (empty($motivos)) {
+                return null;
+            }
+
+            return [
+                'nombre_completo' => trim($estudiante->apellido_paterno.' '.$estudiante->apellido_materno).', '.$estudiante->nombres,
+                'curso' => $mc->curso->nombre_curso,
+                'promedio' => $promedioEstudiante,
+                'asistencia_pct' => $asistenciaPct,
+                'motivos' => $motivos,
+            ];
+        })->filter()->values()->all();
     }
 }

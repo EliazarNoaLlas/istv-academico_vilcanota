@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class SesionAprendizajeService
 {
+
     public function listarPorCurso(int $idCurso, int $idDocente): Collection
     {
         return SesionAprendizaje::where('id_curso', $idCurso)
@@ -21,7 +22,7 @@ class SesionAprendizajeService
     public function subir(UploadedFile $archivo, int $idCurso, int $idDocente, string $titulo, ?int $numeroSesion): SesionAprendizaje
     {
         try {
-            $nombreArchivo = bin2hex(random_bytes(8)).'.'.$archivo->getClientOriginalExtension();
+            $nombreArchivo = bin2hex(random_bytes(8)) . '.' . $archivo->getClientOriginalExtension();
             $ruta = $archivo->storeAs('sesiones', $nombreArchivo, 'local');
 
             return SesionAprendizaje::create([
@@ -43,6 +44,8 @@ class SesionAprendizajeService
         if ($sesion->id_docente !== $idDocente) {
             return false;
         }
+
+        abort_if($sesion->estado === 'APROBADO', 422, 'No se puede eliminar una sesión ya aprobada.');
 
         $archivo = $sesion->archivo;
         $sesion->delete();

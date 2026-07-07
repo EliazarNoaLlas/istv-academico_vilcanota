@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             AulaSeeder::class,
             ConfiguracionSistemaSeeder::class,
             CursoSeeder::class,
+            ItinerarioDsiSeeder::class,
             UsuarioBaseSeeder::class,
         ]);
     }

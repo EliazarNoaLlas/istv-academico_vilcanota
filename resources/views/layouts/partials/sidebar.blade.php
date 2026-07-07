@@ -51,6 +51,9 @@
             <a href="{{ route('director.cursos.index') }}" class="nav-item {{ request()->routeIs('director.cursos.*') ? 'active' : '' }}">
                 <i class="bi bi-journal-bookmark ni"></i> Cursos
             </a>
+            <a href="{{ route('director.itinerarios.index') }}" class="nav-item {{ request()->routeIs('director.itinerarios.*') ? 'active' : '' }}">
+                <i class="bi bi-layers ni"></i> Itinerarios Formativos
+            </a>
             <a href="{{ route('director.notas.index') }}" class="nav-item {{ request()->routeIs('director.notas.*') ? 'active' : '' }}">
                 <i class="bi bi-clipboard-data ni"></i> Notas
             </a>
