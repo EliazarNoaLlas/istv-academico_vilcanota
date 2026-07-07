@@ -19,22 +19,6 @@ function badgeEstado(doc) {
     return `<span class="c-badge ${BADGE_ESTADO[doc.estado] ?? 'c-badge-navy'}">${doc.estado}</span>`;
 }
 
-function renderRow(doc) {
-    const docente = doc.portafolio?.docente ? `${doc.portafolio.docente.usuario?.nombres ?? ''} ${doc.portafolio.docente.usuario?.apellidos ?? ''}` : '—';
-    const curso = doc.portafolio?.curso?.nombre_curso ?? '—';
-
-    return `
-        <tr>
-            <td>${doc.titulo}</td>
-            <td>${docente}</td>
-            <td>${curso}</td>
-            <td>${doc.tipo}</td>
-            <td>${badgeEstado(doc)}</td>
-            <td><button type="button" class="c-btn c-btn-outline c-btn-sm" data-revisar="${doc.id_documento}">Revisar</button></td>
-        </tr>
-    `;
-}
-
 let cursosDisponibles = [];
 
 /** Captura una sola vez las opciones reales del select (antes de reescribirlo). */
@@ -74,18 +58,6 @@ function actualizarCursosPorDocente() {
     select.innerHTML = `<option value="">Todos los cursos</option>${grupos}`;
 }
 
-function filtrosActuales() {
-    const params = {};
-    const docente = document.getElementById('coord-portafolio-filtro-docente')?.value;
-    const curso = document.getElementById('coord-portafolio-filtro-curso')?.value;
-    const estado = document.getElementById('coord-portafolio-filtro-estado')?.value;
-    if (docente) params.id_docente = docente;
-    if (curso) params.id_curso = curso;
-    if (estado) params.estado = estado;
-
-    return params;
-}
-
 function cargarKpis() {
     const root = document.getElementById('coord-portafolio-kpis');
     if (!root) return;
@@ -102,32 +74,320 @@ function cargarKpis() {
         .catch((error) => console.error(error));
 }
 
+/** Carga TODOS los documentos (sin filtro de servidor): los filtros ahora solo muestran/ocultan tarjetas de grupo ya renderizadas. */
 function cargarDocumentos() {
-    const tbody = document.getElementById('coord-portafolio-tbody');
-    const query = new URLSearchParams(filtrosActuales()).toString();
-
-    fetch(`/api/coordinador/portafolios${query ? `?${query}` : ''}`, { headers: { Accept: 'application/json' } })
+    return fetch('/api/coordinador/portafolios', { headers: { Accept: 'application/json' } })
         .then((res) => res.json())
         .then((data) => {
             documentosCache = data.documentos ?? [];
+            renderGruposRevision();
 
-            tbody.innerHTML = documentosCache.length
-                ? documentosCache.map(renderRow).join('')
-                : '<tr><td colspan="6" class="coord-portafolio-empty">No hay documentos para este filtro.</td></tr>';
-
-            wireRevisarButtons();
+            // Si un grupo ya estaba expandido, sus tarjetas de Sílabo/Evidencias tambien se refrescan.
+            document.querySelectorAll('.coord-revision-grupo[data-cargado="1"]').forEach(renderSeccionesArchivos);
         })
+        .catch((error) => console.error(error));
+}
+
+/** Actualiza cabecera (archivos subidos/progreso/pendientes) de cada grupo docente+curso y aplica los filtros de visibilidad. */
+function renderGruposRevision() {
+    const filtroDocente = document.getElementById('coord-portafolio-filtro-docente')?.value;
+    const filtroCurso = document.getElementById('coord-portafolio-filtro-curso')?.value;
+    const filtroEstado = document.getElementById('coord-portafolio-filtro-estado')?.value;
+
+    document.querySelectorAll('.coord-revision-grupo').forEach((grupo) => {
+        const idCurso = grupo.dataset.idCurso;
+        const idDocente = grupo.dataset.idDocente;
+
+        const docsGrupo = documentosCache.filter((d) => String(d.portafolio?.id_curso) === idCurso);
+        const silabo = docsGrupo.find((d) => d.tipo === 'SILABO') ?? null;
+        const evidencia = docsGrupo.find((d) => d.tipo === 'EVIDENCIA') ?? null;
+        grupo._docs = { silabo, evidencia };
+
+        const subidos = [silabo, evidencia].filter(Boolean).length;
+        const aprobados = [silabo, evidencia].filter((d) => d?.estado === 'APROBADO').length;
+        const pendientes = 2 - aprobados;
+        const pct = Math.round((aprobados / 2) * 100);
+
+        const subidosEl = grupo.querySelector('[data-archivos-subidos]');
+        if (subidosEl) subidosEl.textContent = `${subidos} archivo(s) subido(s) por el docente`;
+        grupo.querySelector('[data-progreso-bar]').style.width = `${pct}%`;
+        grupo.querySelector('[data-progreso-pct]').textContent = `${pct}%`;
+
+        const badge = grupo.querySelector('[data-pendientes-badge]');
+        badge.hidden = pendientes === 0;
+        if (pendientes > 0) badge.textContent = `${pendientes} pend.`;
+
+        const coincideDocente = !filtroDocente || filtroDocente === idDocente;
+        const coincideCurso = !filtroCurso || filtroCurso === idCurso;
+        const coincideEstado = !filtroEstado || [silabo, evidencia].some((d) => d?.estado === filtroEstado);
+        grupo.style.display = coincideDocente && coincideCurso && coincideEstado ? '' : 'none';
+    });
+}
+
+/** Tarjetas de Sílabo y Evidencias del grupo (archivos reales: Ver/Revisar con IA/Observar, via el modal ya existente). */
+function renderSeccionesArchivos(grupo) {
+    const { silabo, evidencia } = grupo._docs ?? {};
+    const root = grupo.querySelector('[data-secciones-archivos]');
+
+    const tarjeta = (doc, etiqueta, icono) => {
+        const estado = doc?.estado ?? null;
+        const badgeClase = estado ? (BADGE_ESTADO[estado] ?? 'c-badge-navy') : 'c-badge-red';
+        const sub = doc ? `Subido ${formatearFecha(doc.fecha_subida)}` : 'Pendiente de subir por el docente';
+
+        return `
+            <div class="coord-revision-doc-card">
+                <div class="coord-revision-doc-head">
+                    <i class="bi ${icono}"></i>
+                    <div>
+                        <strong>${etiqueta}</strong>
+                        <small>${sub}</small>
+                    </div>
+                </div>
+                <span class="c-badge ${badgeClase}">${estado ? '' : '<i class="bi bi-exclamation-triangle-fill"></i> '}${estado ?? 'Pendiente'}</span>
+                <div class="coord-revision-doc-acciones">
+                    <button type="button" class="c-btn c-btn-outline c-btn-sm" ${doc ? `data-ver-doc="${doc.id_documento}"` : 'disabled'}>
+                        <i class="bi bi-eye"></i> Ver
+                    </button>
+                </div>
+            </div>
+        `;
+    };
+
+    root.innerHTML = tarjeta(silabo, 'Sílabo', 'bi-file-earmark-text') + tarjeta(evidencia, 'Evidencias de Aprendizaje', 'bi-folder2');
+
+    root.querySelectorAll('[data-ver-doc]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const doc = documentosCache.find((d) => String(d.id_documento) === btn.dataset.verDoc);
+            if (doc) abrirModal(doc);
+        });
+    });
+}
+
+/** Sesiones de aprendizaje del curso: lista con Aprobar/Rechazar directo (sin modal, no aplica analisis IA). */
+function cargarSesionesRevision(grupo) {
+    const idCurso = grupo.dataset.idCurso;
+    const root = grupo.querySelector('[data-sesiones-lista]');
+    const conteo = grupo.querySelector('[data-sesiones-conteo]');
+
+    fetch(`/api/coordinador/portafolios/revision/sesiones?id_curso=${idCurso}`, { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            const sesiones = data.sesiones ?? [];
+            conteo.textContent = `${sesiones.length} sesión(es) subida(s)`;
+
+            root.innerHTML = sesiones.length
+                ? sesiones.map((s) => `
+                    <div class="coord-revision-sesion-item">
+                        <div>
+                            <strong>${s.titulo}</strong><br>
+                            <small>${s.numero_sesion ? `Sesión ${s.numero_sesion} · ` : ''}${formatearFecha(s.fecha_subida)}</small>
+                        </div>
+                        <span class="c-badge ${s.estado === 'APROBADO' ? 'c-badge-green' : s.estado === 'RECHAZADO' ? 'c-badge-red' : 'c-badge-gold'}">${s.estado}</span>
+                        <div class="coord-revision-sesion-acciones">
+                            <button type="button" class="c-btn c-btn-outline c-btn-sm" data-aprobar-sesion="${s.id_sesion}">Aprobar</button>
+                            <button type="button" class="c-btn c-btn-outline c-btn-sm coord-revision-btn-rechazar" data-rechazar-sesion="${s.id_sesion}">Rechazar</button>
+                        </div>
+                    </div>
+                `).join('')
+                : '<div class="coord-sesiones-lista-vacia">No hay sesiones de aprendizaje subidas para este curso.</div>';
+
+            root.querySelectorAll('[data-aprobar-sesion]').forEach((btn) => {
+                btn.addEventListener('click', () => validarSesionRevision(btn.dataset.aprobarSesion, 'APROBADO', grupo));
+            });
+            root.querySelectorAll('[data-rechazar-sesion]').forEach((btn) => {
+                btn.addEventListener('click', () => validarSesionRevision(btn.dataset.rechazarSesion, 'RECHAZADO', grupo));
+            });
+        })
+        .catch(() => { root.innerHTML = '<div class="coord-sesiones-lista-vacia">No se pudo cargar las sesiones.</div>'; });
+}
+
+function validarSesionRevision(idSesion, estado, grupo) {
+    fetch(`/api/coordinador/portafolios/revision/sesiones/${idSesion}/validar`, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ estado }),
+    })
+        .then((res) => res.json())
+        .then(() => cargarSesionesRevision(grupo))
+        .catch(() => alert('No se pudo actualizar la sesión.'));
+}
+
+/** Asistencia de revision: solo lectura, filtrable por fecha (las fechas ya tomadas por el docente). */
+const BADGE_ASISTENCIA = { PRESENTE: 'c-badge-green', TARDANZA: 'c-badge-gold', AUSENTE: 'c-badge-red', JUSTIFICADO: 'c-badge-navy' };
+
+function cargarAsistenciaRevision(grupo) {
+    const idCurso = grupo.dataset.idCurso;
+    const selectFecha = grupo.querySelector('[data-fecha-select]');
+    const root = grupo.querySelector('[data-asistencia-lista]');
+
+    fetch(`/api/coordinador/portafolios/revision/asistencia/fechas?id_curso=${idCurso}`, { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            const fechas = data.fechas ?? [];
+
+            if (!fechas.length) {
+                selectFecha.innerHTML = '<option value="">Sin sesiones</option>';
+                root.innerHTML = '<div class="coord-sesiones-lista-vacia">Este docente aún no ha registrado asistencia en este curso.</div>';
+
+                return;
+            }
+
+            selectFecha.innerHTML = fechas.map((f) => `<option value="${f}">${f}</option>`).join('');
+            selectFecha.onchange = () => renderAsistenciaFechaRevision(idCurso, selectFecha.value, root);
+            renderAsistenciaFechaRevision(idCurso, fechas[0], root);
+        })
+        .catch(() => { root.innerHTML = '<div class="coord-sesiones-lista-vacia">No se pudo cargar la asistencia.</div>'; });
+}
+
+function renderAsistenciaFechaRevision(idCurso, fecha, root) {
+    root.innerHTML = '<div class="coord-sesiones-lista-vacia">Cargando…</div>';
+
+    fetch(`/api/coordinador/portafolios/revision/asistencia?id_curso=${idCurso}&fecha=${fecha}`, { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            const estudiantes = data.estudiantes ?? [];
+
+            root.innerHTML = estudiantes.length
+                ? estudiantes.map((e) => `
+                    <div class="coord-revision-asistencia-item">
+                        <span>${e.nombre_completo}</span>
+                        <span class="c-badge ${BADGE_ASISTENCIA[e.estado] ?? 'c-badge-navy'}">${e.estado ?? 'Sin registrar'}</span>
+                    </div>
+                `).join('')
+                : '<div class="coord-sesiones-lista-vacia">No hay estudiantes registrados en el semestre de este curso.</div>';
+        })
+        .catch(() => { root.innerHTML = '<div class="coord-sesiones-lista-vacia">No se pudo cargar la asistencia.</div>'; });
+}
+
+/** Notas de revision: el coordinador puede ver, editar directamente y reabrir el acta si el docente ya la cerro. */
+function wireFilaNotasInputsEnContenedor(root, notaMinima) {
+    root.querySelectorAll('tbody tr').forEach((fila) => {
+        fila.querySelectorAll('.coord-notas-input').forEach((input) => {
+            input.addEventListener('input', () => {
+                input.classList.toggle('baja', input.value !== '' && Number(input.value) < notaMinima);
+                recalcularPromedioFila(fila, notaMinima);
+            });
+        });
+    });
+}
+
+function cargarNotasRevision(grupo) {
+    grupo.querySelector('[data-parcial-select]').onchange = () => renderNotasParcialRevision(grupo);
+    grupo.querySelector('[data-guardar-notas-btn]').addEventListener('click', () => guardarNotasRevisionGrupo(grupo));
+    grupo.querySelector('[data-reabrir-btn]').addEventListener('click', () => reabrirActaRevisionGrupo(grupo));
+    renderNotasParcialRevision(grupo);
+}
+
+function renderNotasParcialRevision(grupo) {
+    const idCurso = grupo.dataset.idCurso;
+    const unidad = grupo.querySelector('[data-parcial-select]').value;
+    const root = grupo.querySelector('[data-notas-lista]');
+    const botonReabrir = grupo.querySelector('[data-reabrir-btn]');
+
+    root.innerHTML = '<div class="coord-sesiones-lista-vacia">Cargando…</div>';
+
+    fetch(`/api/coordinador/portafolios/revision/notas?id_curso=${idCurso}&unidad=${unidad}`, { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            const estudiantes = data.estudiantes ?? [];
+            const notaMinima = data.resumen?.nota_minima ?? 10.5;
+            botonReabrir.hidden = ! (data.resumen?.acta_cerrada ?? false);
+
+            root.innerHTML = estudiantes.length
+                ? `
+                    <table class="coord-notas-tabla">
+                        <thead><tr><th>Estudiante</th><th>Examen Práctico</th><th>Examen Teórico</th><th>Examen</th><th>Promedio</th></tr></thead>
+                        <tbody>${estudiantes.map((e, i) => filaNotaHtml(e, i, notaMinima)).join('')}</tbody>
+                    </table>
+                `
+                : '<div class="coord-sesiones-lista-vacia">No hay estudiantes registrados en el semestre de este curso.</div>';
+
+            wireFilaNotasInputsEnContenedor(root, notaMinima);
+        })
+        .catch(() => { root.innerHTML = '<div class="coord-sesiones-lista-vacia">No se pudo cargar las notas.</div>'; });
+}
+
+function guardarNotasRevisionGrupo(grupo) {
+    const idCurso = grupo.dataset.idCurso;
+    const unidad = grupo.querySelector('[data-parcial-select]').value;
+    const errorBox = grupo.querySelector('[data-notas-error]');
+    const boton = grupo.querySelector('[data-guardar-notas-btn]');
+    errorBox.textContent = '';
+
+    const filas = Array.from(grupo.querySelectorAll('[data-notas-lista] tbody tr'));
+    if (!filas.length) return;
+
+    const valor = (fila, selector) => {
+        const raw = fila.querySelector(selector).value;
+
+        return raw === '' ? null : Number(raw);
+    };
+
+    boton.disabled = true;
+    boton.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando…';
+
+    fetch('/api/coordinador/portafolios/revision/notas', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({
+            id_curso: Number(idCurso),
+            unidad,
+            filas: filas.map((fila) => ({
+                id_matricula_curso: Number(fila.dataset.idMatriculaCurso),
+                practica: valor(fila, '.nota-practica'),
+                teoria: valor(fila, '.nota-teoria'),
+                examen: valor(fila, '.nota-examen'),
+            })),
+        }),
+    })
+        .then(async (res) => {
+            const body = await res.json();
+            if (!res.ok) throw body;
+
+            return body;
+        })
+        .then(() => renderNotasParcialRevision(grupo))
         .catch((error) => {
-            tbody.innerHTML = '<tr><td colspan="6" class="coord-portafolio-empty">No se pudo cargar el portafolio.</td></tr>';
-            console.error(error);
+            errorBox.textContent = error?.errors ? Object.values(error.errors).flat().join(' ') : 'No se pudo guardar las notas.';
+        })
+        .finally(() => {
+            boton.disabled = false;
+            boton.innerHTML = '<i class="bi bi-save"></i> Guardar';
         });
 }
 
-function wireRevisarButtons() {
-    document.querySelectorAll('[data-revisar]').forEach((btn) => {
+function reabrirActaRevisionGrupo(grupo) {
+    const idCurso = grupo.dataset.idCurso;
+    const unidad = grupo.querySelector('[data-parcial-select]').value;
+
+    fetch('/api/coordinador/portafolios/revision/notas/reabrir', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ id_curso: Number(idCurso), unidad }),
+    })
+        .then((res) => res.json())
+        .then(() => renderNotasParcialRevision(grupo))
+        .catch(() => alert('No se pudo reabrir el acta.'));
+}
+
+/** Expandir/colapsar un grupo docente+curso; la primera vez que se abre, carga sus 5 secciones. */
+function wireGruposRevision() {
+    document.querySelectorAll('[data-toggle-grupo]').forEach((btn) => {
         btn.addEventListener('click', () => {
-            const doc = documentosCache.find((d) => String(d.id_documento) === btn.dataset.revisar);
-            if (doc) abrirModal(doc);
+            const grupo = btn.closest('.coord-revision-grupo');
+            const body = grupo.querySelector('.coord-revision-grupo-body');
+            const abrir = body.hidden;
+            body.hidden = !abrir;
+            btn.querySelector('.bi-chevron-down, .bi-chevron-up')?.classList.toggle('bi-chevron-up', abrir);
+            btn.querySelector('.bi-chevron-down, .bi-chevron-up')?.classList.toggle('bi-chevron-down', !abrir);
+
+            if (abrir && !grupo.dataset.cargado) {
+                grupo.dataset.cargado = '1';
+                renderSeccionesArchivos(grupo);
+                cargarSesionesRevision(grupo);
+                cargarAsistenciaRevision(grupo);
+                cargarNotasRevision(grupo);
+            }
         });
     });
 }
@@ -288,13 +548,13 @@ function actualizarConteoNotas(idCurso) {
             if (!detalle || !badge) return;
 
             if (!estudiantes.length) {
-                detalle.textContent = 'Aún no hay estudiantes matriculados en este curso.';
+                detalle.textContent = 'No hay estudiantes registrados en el semestre de este curso.';
                 badge.innerHTML = '<span class="c-badge c-badge-red"><i class="bi bi-exclamation-triangle-fill"></i> Pendiente</span>';
             } else if (!conNota.length) {
                 detalle.textContent = `Pendiente de ingresar · ${estudiantes.length} estudiante(s)`;
                 badge.innerHTML = '<span class="c-badge c-badge-red"><i class="bi bi-exclamation-triangle-fill"></i> Pendiente</span>';
             } else {
-                detalle.textContent = `${conNota.length} de ${estudiantes.length} estudiantes con nota (unidad I)`;
+                detalle.textContent = `${conNota.length} de ${estudiantes.length} estudiantes con nota (Parcial 1)`;
                 badge.innerHTML = `<span class="c-badge c-badge-green"><i class="bi bi-check-circle-fill"></i> ${conNota.length}/${estudiantes.length}</span>`;
             }
         })
@@ -324,26 +584,24 @@ function renderCardAsistencia(idCurso, curso, periodo) {
 }
 
 function actualizarConteoAsistencia(idCurso) {
-    const ahora = new Date();
-    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+    const hoy = new Date().toISOString().slice(0, 10);
 
-    fetch(`/api/coordinador/portafolios/asistencia?id_curso=${idCurso}&mes=${mes}`, { headers: { Accept: 'application/json' } })
+    fetch(`/api/coordinador/portafolios/asistencia?id_curso=${idCurso}&fecha=${hoy}`, { headers: { Accept: 'application/json' } })
         .then((res) => res.json())
         .then((data) => {
-            const dias = data.dias ?? [];
             const estudiantes = data.estudiantes ?? [];
             const detalle = document.getElementById('asistencia-card-detalle');
             const badge = document.getElementById('asistencia-card-badge');
             if (!detalle || !badge) return;
 
-            const diasTomados = dias.filter((dia) => estudiantes.some((e) => e.asistencias[dia] !== null)).length;
+            const tomada = estudiantes.some((e) => e.estado !== null);
 
-            if (!diasTomados) {
-                detalle.textContent = 'Pendiente de ingresar · Requiere asistencia este mes';
+            if (!tomada) {
+                detalle.textContent = 'Pendiente de ingresar · Requiere asistencia hoy';
                 badge.innerHTML = '<span class="c-badge c-badge-red"><i class="bi bi-exclamation-triangle-fill"></i> Pendiente</span>';
             } else {
-                detalle.textContent = `${diasTomados} día(s) registrados este mes`;
-                badge.innerHTML = `<span class="c-badge c-badge-green"><i class="bi bi-check-circle-fill"></i> ${diasTomados} ${diasTomados === 1 ? 'día' : 'días'}</span>`;
+                detalle.textContent = `${data.resumen.presentes} presente(s) hoy`;
+                badge.innerHTML = `<span class="c-badge c-badge-green"><i class="bi bi-check-circle-fill"></i> Tomada</span>`;
             }
         })
         .catch(() => {
@@ -658,9 +916,11 @@ function recargarSesionesCursoActivo() {
         });
 }
 
-// --- Gestor de "Notas" (3 columnas: acciones / cursos / estudiantes) ---
+// --- Gestor de "Notas": tarjeta de curso + resumen de clase + tabla de estudiantes por semestre (igual que Asistencia). ---
 let notasCursos = [];
 let notasCursoActivo = null;
+const ETIQUETA_PARCIAL = { I: 'Parcial 1', II: 'Parcial 2', III: 'Parcial 3' };
+const PALETA_AVATAR_NOTAS = ['teal', 'navy', 'gold', 'red', 'purple'];
 
 function abrirGestorNotas() {
     document.getElementById('coord-mi-portafolio-grid').style.display = 'none';
@@ -674,119 +934,206 @@ function cerrarGestorNotas() {
 }
 
 function cargarCursosParaNotas() {
-    notasCursos = Array.from(document.getElementById('coord-mi-portafolio-curso').options)
+    const selectPrincipal = document.getElementById('coord-mi-portafolio-curso');
+
+    notasCursos = Array.from(selectPrincipal.options)
         .filter((o) => o.value)
         .map((o) => ({ id_curso: o.value, nombre_curso: o.textContent }));
 
-    notasCursoActivo = null;
-    renderListaCursosNotas();
-    renderListaEstudiantesNotas();
+    const select = document.getElementById('coord-notas-curso');
+    select.innerHTML = notasCursos.map((c) => `<option value="${c.id_curso}">${c.nombre_curso}</option>`).join('');
 
-    if (notasCursos.length) seleccionarCursoNotas(notasCursos[0].id_curso);
-}
+    document.getElementById('coord-notas-semestre-valor').textContent = selectPrincipal.dataset.periodoCodigo || '—';
 
-function renderListaCursosNotas() {
-    const root = document.getElementById('coord-notas-lista-cursos');
-
-    root.innerHTML = notasCursos.length
-        ? notasCursos.map((c, i) => `
-            <div class="coord-sesiones-curso-item ${c.id_curso === notasCursoActivo ? 'active' : ''}" data-id-curso="${c.id_curso}" style="--item-color:${COLOR_VAR[PALETA_CURSOS[i % PALETA_CURSOS.length]]}">
-                <div class="coord-sesiones-curso-icono"><i class="bi bi-code-slash"></i></div>
-                <div class="coord-sesiones-curso-nombre">${c.nombre_curso}</div>
-            </div>
-        `).join('')
-        : '<p class="coord-portafolio-empty">Aún no tienes cursos asignados.</p>';
-
-    root.querySelectorAll('[data-id-curso]').forEach((el) => {
-        el.addEventListener('click', () => seleccionarCursoNotas(el.dataset.idCurso));
-    });
+    if (notasCursos.length) {
+        seleccionarCursoNotas(notasCursos[0].id_curso);
+    } else {
+        document.getElementById('coord-notas-curso-nombre').textContent = 'Sin cursos asignados';
+        document.getElementById('coord-notas-total-estudiantes').textContent = '0';
+    }
 }
 
 function seleccionarCursoNotas(idCurso) {
     notasCursoActivo = idCurso;
+    document.getElementById('coord-notas-curso').value = idCurso;
+
     const curso = notasCursos.find((c) => c.id_curso === idCurso);
+    document.getElementById('coord-notas-curso-nombre').textContent = curso?.nombre_curso ?? '—';
 
-    document.getElementById('coord-notas-seleccionado').style.display = 'block';
-    document.getElementById('coord-notas-curso-actual').textContent = curso?.nombre_curso ?? '';
-
-    renderListaCursosNotas();
-    renderListaEstudiantesNotas();
+    cargarNotasDelParcial();
 }
 
-function renderListaEstudiantesNotas() {
-    const titulo = document.getElementById('coord-notas-lista-titulo');
-    const root = document.getElementById('coord-notas-lista-estudiantes');
-    const curso = notasCursos.find((c) => c.id_curso === notasCursoActivo);
+function inicialesNotas(nombres, apellidos) {
+    return `${(nombres[0] ?? '').toUpperCase()}${(apellidos[0] ?? '').toUpperCase()}`;
+}
 
-    if (!curso) {
-        titulo.innerHTML = '<i class="bi bi-people"></i> Seleccione un curso';
+function claseNotaBaja(valor, notaMinima) {
+    return valor !== null && valor !== undefined && Number(valor) < notaMinima ? 'baja' : '';
+}
+
+function claseBadgePromedio(promedio, notaMinima) {
+    if (promedio === null || promedio === undefined) return '';
+    const valor = Number(promedio);
+    if (valor < notaMinima) return 'baja';
+
+    return valor >= 14 ? 'alta' : 'media';
+}
+
+function filaNotaHtml(est, indice, notaMinima) {
+    const color = PALETA_AVATAR_NOTAS[indice % PALETA_AVATAR_NOTAS.length];
+    const nombre = `${est.estudiante.nombres} ${est.estudiante.apellido_paterno ?? ''}`;
+
+    return `
+        <tr data-id-matricula-curso="${est.id_matricula_curso}" data-nombre="${nombre.toLowerCase()}">
+            <td>
+                <div class="coord-notas-fila-nombre">
+                    <div class="coord-asistencia-avatar ${color}">${inicialesNotas(est.estudiante.nombres, est.estudiante.apellido_paterno ?? '')}</div>
+                    <div>
+                        <strong>${nombre}</strong><br>
+                        <small style="color:var(--text-muted)">${est.estudiante.codigo_estudiante}</small>
+                    </div>
+                </div>
+            </td>
+            <td><input type="number" min="0" max="20" step="0.01" class="coord-notas-input nota-practica ${claseNotaBaja(est.practica, notaMinima)}" value="${est.practica ?? ''}"></td>
+            <td><input type="number" min="0" max="20" step="0.01" class="coord-notas-input nota-teoria ${claseNotaBaja(est.teoria, notaMinima)}" value="${est.teoria ?? ''}"></td>
+            <td><input type="number" min="0" max="20" step="0.01" class="coord-notas-input nota-examen ${claseNotaBaja(est.examen, notaMinima)}" value="${est.examen ?? ''}"></td>
+            <td><span class="coord-notas-promedio ${claseBadgePromedio(est.promedio, notaMinima)}" data-promedio>${est.promedio ?? '—'}</span></td>
+        </tr>
+    `;
+}
+
+/** Recalcula el promedio (20% practica + 30% teoria + 50% examen) al vuelo, sin esperar a guardar. */
+function recalcularPromedioFila(fila, notaMinima) {
+    const leer = (selector) => {
+        const raw = fila.querySelector(selector).value;
+
+        return raw === '' ? null : Number(raw);
+    };
+
+    const practica = leer('.nota-practica');
+    const teoria = leer('.nota-teoria');
+    const examen = leer('.nota-examen');
+
+    const badge = fila.querySelector('[data-promedio]');
+
+    if (practica === null && teoria === null && examen === null) {
+        badge.textContent = '—';
+        badge.className = 'coord-notas-promedio';
+
+        return;
+    }
+
+    const promedio = Math.round(((practica ?? 0) * 0.2 + (teoria ?? 0) * 0.3 + (examen ?? 0) * 0.5) * 100) / 100;
+    badge.textContent = promedio.toFixed(2);
+    badge.className = `coord-notas-promedio ${claseBadgePromedio(promedio, notaMinima)}`;
+}
+
+function wireFilaNotasInputs(notaMinima) {
+    document.querySelectorAll('#coord-notas-lista-estudiantes tbody tr').forEach((fila) => {
+        fila.querySelectorAll('.coord-notas-input').forEach((input) => {
+            input.addEventListener('input', () => {
+                input.classList.toggle('baja', input.value !== '' && Number(input.value) < notaMinima);
+                recalcularPromedioFila(fila, notaMinima);
+            });
+        });
+    });
+}
+
+function renderKpisNotas(resumen) {
+    document.getElementById('coord-notas-stat-promedio').textContent = resumen.promedio_clase ?? '—';
+    document.getElementById('coord-notas-stat-desaprobados').textContent = resumen.desaprobados ?? 0;
+
+    const kpis = document.getElementById('coord-notas-kpis');
+    kpis.querySelector('[data-kpi="promedio"]').textContent = resumen.promedio_clase ?? '—';
+    kpis.querySelector('[data-kpi="mas-alta"]').textContent = resumen.nota_mas_alta ?? '—';
+    kpis.querySelector('[data-kpi="mas-baja"]').textContent = resumen.nota_mas_baja ?? '—';
+    kpis.querySelector('[data-kpi="desaprobados"]').textContent = resumen.desaprobados ?? 0;
+}
+
+function aplicarFiltroNotas() {
+    const busqueda = document.getElementById('coord-notas-buscar').value.trim().toLowerCase();
+
+    document.querySelectorAll('#coord-notas-lista-estudiantes tbody tr').forEach((fila) => {
+        fila.style.display = !busqueda || fila.dataset.nombre.includes(busqueda) ? '' : 'none';
+    });
+}
+
+function cargarNotasDelParcial() {
+    const root = document.getElementById('coord-notas-lista-estudiantes');
+
+    if (!notasCursoActivo) {
         root.innerHTML = '';
 
         return;
     }
 
     const unidad = document.getElementById('coord-notas-unidad').value;
-    titulo.innerHTML = `${curso.nombre_curso}<br><small style="font-weight:400;color:var(--text-muted)">Unidad ${unidad}</small>`;
     root.innerHTML = '<div class="coord-sesiones-lista-vacia">Cargando…</div>';
 
     fetch(`/api/coordinador/portafolios/notas?id_curso=${notasCursoActivo}&unidad=${unidad}`, { headers: { Accept: 'application/json' } })
         .then((res) => res.json())
         .then((data) => {
             const estudiantes = data.estudiantes ?? [];
+            const notaMinima = data.resumen?.nota_minima ?? 10.5;
+
+            document.getElementById('coord-notas-total-estudiantes').textContent = estudiantes.length;
+            renderKpisNotas(data.resumen ?? {});
 
             root.innerHTML = estudiantes.length
                 ? `
-                    <table class="c-table">
+                    <table class="coord-notas-tabla">
                         <thead>
-                            <tr><th>Estudiante</th><th>Práctica</th><th>Teoría</th><th>Examen</th><th>Promedio</th><th></th></tr>
+                            <tr><th>Estudiante</th><th>Examen Práctico</th><th>Examen Teórico</th><th>Examen</th><th>Promedio</th></tr>
                         </thead>
                         <tbody>
-                            ${estudiantes.map((e) => `
-                                <tr data-id-matricula-curso="${e.id_matricula_curso}">
-                                    <td>${e.estudiante.nombres} ${e.estudiante.apellido_paterno ?? ''}</td>
-                                    <td><input type="number" min="0" max="20" step="0.01" class="input-inline nota-practica" style="width:70px" value="${e.practica ?? ''}"></td>
-                                    <td><input type="number" min="0" max="20" step="0.01" class="input-inline nota-teoria" style="width:70px" value="${e.teoria ?? ''}"></td>
-                                    <td><input type="number" min="0" max="20" step="0.01" class="input-inline nota-examen" style="width:70px" value="${e.examen ?? ''}"></td>
-                                    <td>${e.promedio ?? '—'}</td>
-                                    <td><button type="button" class="c-btn c-btn-outline c-btn-sm" data-guardar-nota="${e.id_matricula_curso}">Guardar</button></td>
-                                </tr>
-                            `).join('')}
+                            ${estudiantes.map((e, i) => filaNotaHtml(e, i, notaMinima)).join('')}
                         </tbody>
                     </table>
                 `
-                : '<div class="coord-sesiones-lista-vacia">Aún no hay estudiantes matriculados en este curso.</div>';
+                : '<div class="coord-sesiones-lista-vacia">No hay estudiantes registrados en el semestre de este curso.</div>';
 
-            root.querySelectorAll('[data-guardar-nota]').forEach((btn) => {
-                btn.addEventListener('click', () => guardarNotaFila(btn.dataset.guardarNota));
-            });
+            wireFilaNotasInputs(notaMinima);
+            aplicarFiltroNotas();
         })
         .catch(() => {
             root.innerHTML = '<div class="coord-sesiones-lista-vacia">No se pudo cargar la lista de estudiantes.</div>';
         });
 }
 
-function guardarNotaFila(idMatriculaCurso) {
-    const fila = document.querySelector(`tr[data-id-matricula-curso="${idMatriculaCurso}"]`);
+/** Guarda todas las filas en UNA sola peticion (no una por estudiante): mas confiable y rapido. */
+function guardarNotasCoordinador() {
     const unidad = document.getElementById('coord-notas-unidad').value;
     const errorBox = document.getElementById('coord-notas-error');
+    const boton = document.getElementById('coord-notas-guardar-todo');
     errorBox.textContent = '';
 
-    const valor = (selector) => {
+    const filas = Array.from(document.querySelectorAll('#coord-notas-lista-estudiantes tbody tr'));
+    if (!filas.length || !notasCursoActivo) return;
+
+    const valor = (fila, selector) => {
         const raw = fila.querySelector(selector).value;
 
         return raw === '' ? null : Number(raw);
     };
 
+    const cuerpo = {
+        id_curso: notasCursoActivo,
+        unidad,
+        filas: filas.map((fila) => ({
+            id_matricula_curso: Number(fila.dataset.idMatriculaCurso),
+            practica: valor(fila, '.nota-practica'),
+            teoria: valor(fila, '.nota-teoria'),
+            examen: valor(fila, '.nota-examen'),
+        })),
+    };
+
+    boton.disabled = true;
+    boton.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando…';
+
     fetch('/api/coordinador/portafolios/notas', {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({
-            id_matricula_curso: idMatriculaCurso,
-            unidad,
-            practica: valor('.nota-practica'),
-            teoria: valor('.nota-teoria'),
-            examen: valor('.nota-examen'),
-        }),
+        body: JSON.stringify(cuerpo),
     })
         .then(async (res) => {
             const body = await res.json();
@@ -795,233 +1142,258 @@ function guardarNotaFila(idMatriculaCurso) {
             return body;
         })
         .then(() => {
-            renderListaEstudiantesNotas();
+            cargarNotasDelParcial();
             actualizarConteoNotas(notasCursoActivo);
         })
         .catch((error) => {
-            errorBox.textContent = error?.errors ? Object.values(error.errors).flat().join(' ') : 'No se pudo guardar la nota.';
+            errorBox.textContent = error?.errors ? Object.values(error.errors).flat().join(' ') : (error?.message ?? 'No se pudo guardar las notas.');
+        })
+        .finally(() => {
+            boton.disabled = false;
+            boton.innerHTML = '<i class="bi bi-save"></i> Guardar notas';
         });
 }
 
-// --- Gestor de "Asistencia": matriz estudiantes x dias del mes, sin subir archivos ni "cargar sesion" antes de marcar. ---
+function imprimirNotas() {
+    window.print();
+}
+
+// --- Gestor de "Asistencia": un dia a la vez, tarjeta de curso + botones rapidos por estudiante (igual al modulo Docente). ---
 let asistenciaCursos = [];
 let asistenciaCursoActivo = null;
-let asistenciaMesActivo = null;
-let asistenciaCambiosPendientes = {};
+let asistenciaFechaActiva = null;
+let asistenciaFiltroChip = null;
+const PALETA_AVATAR_ASISTENCIA = ['teal', 'navy', 'gold', 'red', 'purple'];
 
-const CICLO_ESTADOS_ASISTENCIA = ['PRESENTE', 'TARDANZA', 'AUSENTE', 'JUSTIFICADO'];
-const ABREV_ESTADO_ASISTENCIA = { PRESENTE: 'P', TARDANZA: 'T', AUSENTE: 'A', JUSTIFICADO: 'J' };
-const NOMBRES_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-const NOMBRES_DIA_CORTO = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
-
-function hayPendientesAsistencia() {
-    return Object.values(asistenciaCambiosPendientes).some((dia) => Object.keys(dia).length > 0);
+function inicialesAsistencia(nombres, apellidos) {
+    return `${(nombres[0] ?? '').toUpperCase()}${(apellidos[0] ?? '').toUpperCase()}`;
 }
 
-function confirmarDescarteAsistencia() {
-    return !hayPendientesAsistencia() || confirm('Tienes cambios de asistencia sin guardar. ¿Deseas descartarlos?');
+function nombreYApellidosAsistencia(nombreCompleto) {
+    const [apellidos, nombres] = nombreCompleto.split(',').map((s) => s.trim());
+
+    return { nombres: nombres ?? '', apellidos: apellidos ?? '' };
 }
 
-function etiquetaMesAsistencia(mesIso) {
-    const [anio, mes] = mesIso.split('-').map(Number);
-
-    return `${NOMBRES_MES[mes - 1]} ${anio}`;
-}
-
-function nombreDiaCortoAsistencia(fechaIso) {
+function formatearFechaLargaAsistencia(fechaIso) {
     const [anio, mes, dia] = fechaIso.split('-').map(Number);
+    const fecha = new Date(anio, mes - 1, dia);
+    const texto = fecha.toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'short' });
 
-    return NOMBRES_DIA_CORTO[new Date(anio, mes - 1, dia).getDay()];
-}
-
-function siguienteEstadoAsistencia(estadoActual) {
-    if (!estadoActual) return 'PRESENTE';
-    const indice = CICLO_ESTADOS_ASISTENCIA.indexOf(estadoActual);
-
-    return CICLO_ESTADOS_ASISTENCIA[(indice + 1) % CICLO_ESTADOS_ASISTENCIA.length];
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 function abrirGestorAsistencia() {
     document.getElementById('coord-mi-portafolio-grid').style.display = 'none';
     document.getElementById('coord-asistencia-manager').style.display = 'block';
 
-    const ahora = new Date();
-    asistenciaMesActivo = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+    asistenciaFechaActiva = new Date().toISOString().slice(0, 10);
     cargarCursosParaAsistencia();
 }
 
 function cerrarGestorAsistencia() {
-    if (!confirmarDescarteAsistencia()) return;
-
     document.getElementById('coord-asistencia-manager').style.display = 'none';
     document.getElementById('coord-mi-portafolio-grid').style.display = 'grid';
 }
 
 function cargarCursosParaAsistencia() {
-    asistenciaCursos = Array.from(document.getElementById('coord-mi-portafolio-curso').options)
+    const selectPrincipal = document.getElementById('coord-mi-portafolio-curso');
+
+    asistenciaCursos = Array.from(selectPrincipal.options)
         .filter((o) => o.value)
         .map((o) => ({ id_curso: o.value, nombre_curso: o.textContent }));
 
-    asistenciaCursoActivo = null;
-    asistenciaCambiosPendientes = {};
-    renderListaCursosAsistencia();
+    const select = document.getElementById('coord-asistencia-curso');
+    select.innerHTML = asistenciaCursos.map((c) => `<option value="${c.id_curso}">${c.nombre_curso}</option>`).join('');
+
+    document.getElementById('coord-asistencia-semestre-valor').textContent = selectPrincipal.dataset.periodoCodigo || '—';
 
     if (asistenciaCursos.length) {
         seleccionarCursoAsistencia(asistenciaCursos[0].id_curso);
     } else {
-        cargarMatrizAsistencia();
+        document.getElementById('coord-asistencia-curso-nombre').textContent = 'Sin cursos asignados';
+        document.getElementById('coord-asistencia-total-matriculados').textContent = '0';
     }
-}
-
-function renderListaCursosAsistencia() {
-    const root = document.getElementById('coord-asistencia-lista-cursos');
-
-    root.innerHTML = asistenciaCursos.length
-        ? asistenciaCursos.map((c, i) => `
-            <div class="coord-sesiones-curso-item ${c.id_curso === asistenciaCursoActivo ? 'active' : ''}" data-id-curso="${c.id_curso}" style="--item-color:${COLOR_VAR[PALETA_CURSOS[i % PALETA_CURSOS.length]]}">
-                <div class="coord-sesiones-curso-icono"><i class="bi bi-code-slash"></i></div>
-                <div class="coord-sesiones-curso-nombre">${c.nombre_curso}</div>
-            </div>
-        `).join('')
-        : '<p class="coord-portafolio-empty">Aún no tienes cursos asignados.</p>';
-
-    root.querySelectorAll('[data-id-curso]').forEach((el) => {
-        el.addEventListener('click', () => {
-            if (el.dataset.idCurso === asistenciaCursoActivo) return;
-            if (!confirmarDescarteAsistencia()) return;
-
-            seleccionarCursoAsistencia(el.dataset.idCurso);
-        });
-    });
 }
 
 function seleccionarCursoAsistencia(idCurso) {
     asistenciaCursoActivo = idCurso;
-    asistenciaCambiosPendientes = {};
+    document.getElementById('coord-asistencia-curso').value = idCurso;
+
     const curso = asistenciaCursos.find((c) => c.id_curso === idCurso);
+    document.getElementById('coord-asistencia-curso-nombre').textContent = curso?.nombre_curso ?? '—';
 
-    document.getElementById('coord-asistencia-seleccionado').style.display = 'block';
-    document.getElementById('coord-asistencia-curso-actual').textContent = curso?.nombre_curso ?? '';
-
-    renderListaCursosAsistencia();
-    cargarMatrizAsistencia();
+    cargarAsistenciaDelDia();
 }
 
-function cambiarMesAsistencia(delta) {
-    if (!confirmarDescarteAsistencia()) return;
-
-    const [anio, mes] = asistenciaMesActivo.split('-').map(Number);
-    const fecha = new Date(anio, mes - 1 + delta, 1);
-    asistenciaMesActivo = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-    cargarMatrizAsistencia();
+function cambiarFechaAsistencia(delta) {
+    const [anio, mes, dia] = asistenciaFechaActiva.split('-').map(Number);
+    const fecha = new Date(anio, mes - 1, dia + delta);
+    asistenciaFechaActiva = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+    cargarAsistenciaDelDia();
 }
 
-function actualizarIndicadorPendientesAsistencia() {
-    const total = Object.values(asistenciaCambiosPendientes).reduce((acc, dia) => acc + Object.keys(dia).length, 0);
-    const texto = document.getElementById('coord-asistencia-pendientes');
-    const boton = document.getElementById('coord-asistencia-guardar');
+function recalcularResumenLocalAsistencia() {
+    const filas = Array.from(document.querySelectorAll('#coord-asistencia-lista .coord-asistencia-fila'));
+    const conteo = { PRESENTE: 0, TARDANZA: 0, AUSENTE: 0, JUSTIFICADO: 0 };
 
-    boton.disabled = total === 0;
-    texto.textContent = total ? `${total} cambio(s) sin guardar` : 'Sin cambios pendientes';
-    texto.classList.toggle('hay-cambios', total > 0);
+    filas.forEach((fila) => { conteo[fila.dataset.estado] = (conteo[fila.dataset.estado] ?? 0) + 1; });
+
+    const total = filas.length;
+    const pct = total > 0 ? Math.round((conteo.PRESENTE / total) * 1000) / 10 : null;
+
+    document.getElementById('coord-asistencia-stat-pct').textContent = pct !== null ? `${pct}%` : '—';
+    document.getElementById('coord-asistencia-stat-ausentes').textContent = conteo.AUSENTE;
+    document.getElementById('coord-asistencia-chip-presentes').textContent = conteo.PRESENTE;
+    document.getElementById('coord-asistencia-chip-tardanzas').textContent = conteo.TARDANZA;
+    document.getElementById('coord-asistencia-chip-ausentes').textContent = conteo.AUSENTE;
 }
 
-function cargarMatrizAsistencia() {
-    const titulo = document.getElementById('coord-asistencia-lista-titulo');
-    const tabla = document.getElementById('coord-asistencia-tabla');
-    const curso = asistenciaCursos.find((c) => c.id_curso === asistenciaCursoActivo);
+function aplicarFiltrosAsistencia() {
+    const busqueda = document.getElementById('coord-asistencia-buscar').value.trim().toLowerCase();
 
-    document.getElementById('coord-asistencia-mes-actual').textContent = etiquetaMesAsistencia(asistenciaMesActivo);
-    asistenciaCambiosPendientes = {};
-    actualizarIndicadorPendientesAsistencia();
-
-    if (!curso) {
-        titulo.innerHTML = '<i class="bi bi-table"></i> Seleccione un curso';
-        tabla.innerHTML = '';
-
-        return;
-    }
-
-    titulo.innerHTML = curso.nombre_curso;
-    tabla.innerHTML = '<caption class="coord-sesiones-lista-vacia">Cargando…</caption>';
-
-    fetch(`/api/coordinador/portafolios/asistencia?id_curso=${asistenciaCursoActivo}&mes=${asistenciaMesActivo}`, { headers: { Accept: 'application/json' } })
-        .then((res) => res.json())
-        .then((data) => renderTablaAsistencia(data))
-        .catch(() => {
-            tabla.innerHTML = '<caption class="coord-sesiones-lista-vacia">No se pudo cargar la asistencia.</caption>';
-        });
-}
-
-function renderTablaAsistencia(data) {
-    const dias = data.dias ?? [];
-    const estudiantes = data.estudiantes ?? [];
-    const tabla = document.getElementById('coord-asistencia-tabla');
-
-    if (!estudiantes.length) {
-        tabla.innerHTML = '<caption class="coord-sesiones-lista-vacia">Aún no hay estudiantes matriculados en este curso.</caption>';
-
-        return;
-    }
-
-    const theadDias = dias.map((dia) => `<th class="coord-asistencia-th-dia">${nombreDiaCortoAsistencia(dia)}<br>${Number(dia.slice(-2))}</th>`).join('');
-
-    const filas = estudiantes.map((est) => {
-        const celdas = dias.map((dia) => {
-            const estado = est.asistencias[dia];
-            const clase = estado ? '' : 'sin-sesion';
-            const texto = estado ? ABREV_ESTADO_ASISTENCIA[estado] : '—';
-
-            return `<td class="coord-asistencia-celda ${clase}" data-fecha="${dia}" data-id-estudiante="${est.id_estudiante}" data-estado="${estado ?? ''}">${texto}</td>`;
-        }).join('');
-
-        const nombre = `${est.estudiante.nombres} ${est.estudiante.apellido_paterno ?? ''}`;
-
-        return `<tr><td class="coord-asistencia-col-nombre">${nombre}</td>${celdas}</tr>`;
-    }).join('');
-
-    tabla.innerHTML = `
-        <thead><tr><th class="coord-asistencia-col-nombre">Estudiante</th>${theadDias}</tr></thead>
-        <tbody>${filas}</tbody>
-    `;
-
-    tabla.querySelectorAll('.coord-asistencia-celda').forEach((celda) => {
-        celda.addEventListener('click', () => onCeldaAsistenciaClick(celda));
+    document.querySelectorAll('#coord-asistencia-lista .coord-asistencia-fila').forEach((fila) => {
+        const coincideChip = !asistenciaFiltroChip || fila.dataset.estado === asistenciaFiltroChip;
+        const coincideBusqueda = !busqueda || fila.dataset.nombre.includes(busqueda);
+        fila.style.display = coincideChip && coincideBusqueda ? '' : 'none';
     });
 }
 
-function onCeldaAsistenciaClick(celda) {
-    const nuevoEstado = siguienteEstadoAsistencia(celda.dataset.estado || null);
-    celda.dataset.estado = nuevoEstado;
-    celda.textContent = ABREV_ESTADO_ASISTENCIA[nuevoEstado];
-    celda.classList.remove('sin-sesion');
-    celda.classList.add('pendiente');
-
-    const fecha = celda.dataset.fecha;
-    const idEstudiante = Number(celda.dataset.idEstudiante);
-
-    asistenciaCambiosPendientes[fecha] ??= {};
-    asistenciaCambiosPendientes[fecha][idEstudiante] = nuevoEstado;
-
-    actualizarIndicadorPendientesAsistencia();
+function wireFilaBotonesAsistencia() {
+    document.querySelectorAll('#coord-asistencia-lista .coord-asistencia-fila-botones button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const fila = btn.closest('.coord-asistencia-fila');
+            fila.dataset.estado = btn.dataset.estadoBtn;
+            fila.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+            recalcularResumenLocalAsistencia();
+        });
+    });
 }
 
-function guardarCambiosAsistencia() {
-    if (!hayPendientesAsistencia() || !asistenciaCursoActivo) return;
+function wireChipsAsistencia() {
+    document.querySelectorAll('#coord-asistencia-manager .coord-asistencia-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            const filtro = chip.dataset.filtro;
+            asistenciaFiltroChip = asistenciaFiltroChip === filtro ? null : filtro;
+            document.querySelectorAll('#coord-asistencia-manager .coord-asistencia-chip').forEach((c) => c.classList.toggle('active', c.dataset.filtro === asistenciaFiltroChip));
+            aplicarFiltrosAsistencia();
+        });
+    });
+}
+
+function renderAlertaAsistencia(alertas) {
+    const panel = document.getElementById('coord-asistencia-alerta');
+    const lista = document.getElementById('coord-asistencia-alerta-lista');
+
+    if (!alertas.length) {
+        panel.hidden = true;
+
+        return;
+    }
+
+    panel.hidden = false;
+    lista.innerHTML = alertas.map((a) => {
+        const { nombres, apellidos } = nombreYApellidosAsistencia(a.nombre_completo);
+
+        return `
+            <div class="c-alert-item">
+                <div class="c-alert-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+                <div class="c-alert-body"><strong>${nombres} ${apellidos}</strong><span>Asistencia histórica: ${a.asistencia_historica_pct}%</span></div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filaAsistenciaHtml(est, indice) {
+    const { nombres, apellidos } = nombreYApellidosAsistencia(est.nombre_completo);
+    const color = PALETA_AVATAR_ASISTENCIA[indice % PALETA_AVATAR_ASISTENCIA.length];
+    const estadoInicial = est.estado ?? 'PRESENTE';
+
+    return `
+        <div class="coord-asistencia-fila" data-id-estudiante="${est.id_estudiante}" data-nombre="${`${nombres} ${apellidos}`.toLowerCase()}" data-estado="${estadoInicial}">
+            <div class="coord-asistencia-avatar ${color}">${inicialesAsistencia(nombres, apellidos)}</div>
+            <div class="coord-asistencia-fila-info">
+                <strong>${nombres} ${apellidos}</strong>
+                <small>${est.codigo_estudiante}</small>
+            </div>
+            <div class="coord-asistencia-fila-botones">
+                <button type="button" data-estado-btn="PRESENTE" class="${estadoInicial === 'PRESENTE' ? 'active' : ''}"><i class="bi bi-check-lg"></i> Presente</button>
+                <button type="button" data-estado-btn="TARDANZA" class="${estadoInicial === 'TARDANZA' ? 'active' : ''}"><i class="bi bi-clock"></i> Tardanza</button>
+                <button type="button" data-estado-btn="AUSENTE" class="${estadoInicial === 'AUSENTE' ? 'active' : ''}"><i class="bi bi-x-lg"></i> Ausente</button>
+                <button type="button" data-estado-btn="JUSTIFICADO" class="${estadoInicial === 'JUSTIFICADO' ? 'active' : ''}"><i class="bi bi-file-earmark-text"></i> Justif.</button>
+            </div>
+        </div>
+    `;
+}
+
+function cargarAsistenciaDelDia() {
+    const lista = document.getElementById('coord-asistencia-lista');
+    const vacio = document.getElementById('coord-asistencia-vacio');
+
+    document.getElementById('coord-asistencia-fecha-texto').textContent = formatearFechaLargaAsistencia(asistenciaFechaActiva);
+
+    if (!asistenciaCursoActivo) {
+        lista.innerHTML = '';
+        vacio.style.display = 'none';
+
+        return;
+    }
+
+    lista.innerHTML = '<div class="coord-sesiones-lista-vacia">Cargando…</div>';
+    vacio.style.display = 'none';
+
+    fetch(`/api/coordinador/portafolios/asistencia?id_curso=${asistenciaCursoActivo}&fecha=${asistenciaFechaActiva}`, { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            const estudiantes = data.estudiantes ?? [];
+            document.getElementById('coord-asistencia-total-matriculados').textContent = data.resumen?.total ?? estudiantes.length;
+
+            if (!estudiantes.length) {
+                lista.innerHTML = '';
+                vacio.style.display = 'block';
+                document.getElementById('coord-asistencia-alerta').hidden = true;
+                recalcularResumenLocalAsistencia();
+
+                return;
+            }
+
+            asistenciaFiltroChip = null;
+            document.querySelectorAll('#coord-asistencia-manager .coord-asistencia-chip').forEach((c) => c.classList.remove('active'));
+
+            renderAlertaAsistencia(data.alertas_bajo_70 ?? []);
+            lista.innerHTML = estudiantes.map(filaAsistenciaHtml).join('');
+            wireFilaBotonesAsistencia();
+            recalcularResumenLocalAsistencia();
+            aplicarFiltrosAsistencia();
+        })
+        .catch(() => {
+            lista.innerHTML = '<div class="coord-sesiones-lista-vacia">No se pudo cargar la asistencia.</div>';
+        });
+}
+
+function marcarTodosPresentesAsistencia() {
+    document.querySelectorAll('#coord-asistencia-lista .coord-asistencia-fila').forEach((fila) => {
+        fila.dataset.estado = 'PRESENTE';
+        fila.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.estadoBtn === 'PRESENTE'));
+    });
+    recalcularResumenLocalAsistencia();
+}
+
+function guardarAsistenciaCoordinador() {
     const errorBox = document.getElementById('coord-asistencia-error');
     errorBox.textContent = '';
 
-    const cambios = Object.fromEntries(
-        Object.entries(asistenciaCambiosPendientes).map(([fecha, porEstudiante]) => [
-            fecha,
-            Object.entries(porEstudiante).map(([idEstudiante, estado]) => ({ id_estudiante: Number(idEstudiante), estado })),
-        ]),
-    );
+    const registros = Array.from(document.querySelectorAll('#coord-asistencia-lista .coord-asistencia-fila')).map((fila) => ({
+        id_estudiante: Number(fila.dataset.idEstudiante),
+        estado: fila.dataset.estado,
+    }));
+
+    if (!registros.length) return;
 
     fetch('/api/coordinador/portafolios/asistencia', {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ id_curso: asistenciaCursoActivo, cambios }),
+        body: JSON.stringify({ id_curso: asistenciaCursoActivo, fecha: asistenciaFechaActiva, registros }),
     })
         .then(async (res) => {
             const body = await res.json();
@@ -1030,9 +1402,7 @@ function guardarCambiosAsistencia() {
             return body;
         })
         .then(() => {
-            asistenciaCambiosPendientes = {};
-            document.querySelectorAll('#coord-asistencia-tabla .coord-asistencia-celda.pendiente').forEach((celda) => celda.classList.remove('pendiente'));
-            actualizarIndicadorPendientesAsistencia();
+            cargarAsistenciaDelDia();
             actualizarConteoAsistencia(asistenciaCursoActivo);
         })
         .catch((error) => {
@@ -1122,20 +1492,21 @@ function confirmarSubidaArchivo() {
 }
 
 export function initCoordinadorPortafolio() {
-    const tbody = document.getElementById('coord-portafolio-tbody');
-    if (!tbody) return;
+    const lista = document.getElementById('coord-revision-lista');
+    if (!lista) return;
 
     capturarCursosDisponibles();
     cargarDocumentos();
     cargarKpis();
+    wireGruposRevision();
 
     document.getElementById('coord-portafolio-filtro-docente')?.addEventListener('change', () => {
         actualizarCursosPorDocente();
-        cargarDocumentos();
+        renderGruposRevision();
     });
 
     ['coord-portafolio-filtro-curso', 'coord-portafolio-filtro-estado'].forEach((id) => {
-        document.getElementById(id)?.addEventListener('change', cargarDocumentos);
+        document.getElementById(id)?.addEventListener('change', renderGruposRevision);
     });
 
     document.getElementById('coord-portafolio-cerrar')?.addEventListener('click', cerrarModal);
@@ -1162,12 +1533,24 @@ export function initCoordinadorPortafolio() {
     });
 
     document.getElementById('coord-notas-volver')?.addEventListener('click', cerrarGestorNotas);
-    document.getElementById('coord-notas-unidad')?.addEventListener('change', renderListaEstudiantesNotas);
+    document.getElementById('coord-notas-curso')?.addEventListener('change', (e) => seleccionarCursoNotas(e.target.value));
+    document.getElementById('coord-notas-unidad')?.addEventListener('change', cargarNotasDelParcial);
+    document.getElementById('coord-notas-buscar')?.addEventListener('input', aplicarFiltroNotas);
+    document.getElementById('coord-notas-guardar-todo')?.addEventListener('click', guardarNotasCoordinador);
+    document.getElementById('coord-notas-imprimir')?.addEventListener('click', imprimirNotas);
 
     document.getElementById('coord-asistencia-volver')?.addEventListener('click', cerrarGestorAsistencia);
-    document.getElementById('coord-asistencia-mes-anterior')?.addEventListener('click', () => cambiarMesAsistencia(-1));
-    document.getElementById('coord-asistencia-mes-siguiente')?.addEventListener('click', () => cambiarMesAsistencia(1));
-    document.getElementById('coord-asistencia-guardar')?.addEventListener('click', guardarCambiosAsistencia);
+    document.getElementById('coord-asistencia-curso')?.addEventListener('change', (e) => seleccionarCursoAsistencia(e.target.value));
+    document.getElementById('coord-asistencia-fecha-anterior')?.addEventListener('click', () => cambiarFechaAsistencia(-1));
+    document.getElementById('coord-asistencia-fecha-siguiente')?.addEventListener('click', () => cambiarFechaAsistencia(1));
+    document.getElementById('coord-asistencia-fecha-hoy')?.addEventListener('click', () => {
+        asistenciaFechaActiva = new Date().toISOString().slice(0, 10);
+        cargarAsistenciaDelDia();
+    });
+    document.getElementById('coord-asistencia-buscar')?.addEventListener('input', aplicarFiltrosAsistencia);
+    document.getElementById('coord-asistencia-marcar-todos')?.addEventListener('click', marcarTodosPresentesAsistencia);
+    document.getElementById('coord-asistencia-guardar')?.addEventListener('click', guardarAsistenciaCoordinador);
+    wireChipsAsistencia();
 }
 
 document.addEventListener('DOMContentLoaded', initCoordinadorPortafolio);

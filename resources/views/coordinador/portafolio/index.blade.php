@@ -68,25 +68,70 @@
                 </div>
             </div>
 
-            <div class="c-panel">
-                <div class="c-panel-header"><i class="bi bi-table"></i><h3>Documentos del portafolio</h3></div>
-                <div class="c-panel-body" style="padding-top:0">
-                    <table class="c-table">
-                        <thead>
-                            <tr>
-                                <th>Documento</th>
-                                <th>Docente</th>
-                                <th>Curso</th>
-                                <th>Tipo</th>
-                                <th>Estado</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="coord-portafolio-tbody">
-                            <tr><td colspan="6" class="coord-portafolio-empty">Cargando documentos…</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            @php $docentesPorId = $docentes->keyBy('id_docente'); @endphp
+            <div id="coord-revision-lista">
+                @forelse ($cursos->whereNotNull('id_docente') as $curso)
+                    @php $docenteDelCurso = $docentesPorId->get($curso->id_docente); @endphp
+                    @continue(! $docenteDelCurso)
+                    <div class="coord-revision-grupo" data-id-curso="{{ $curso->id_curso }}" data-id-docente="{{ $curso->id_docente }}">
+                        <button type="button" class="coord-revision-grupo-header" data-toggle-grupo>
+                            <div class="coord-revision-avatar">{{ strtoupper(substr($docenteDelCurso->usuario->nombres, 0, 1).substr($docenteDelCurso->usuario->apellidos ?? '', 0, 1)) }}</div>
+                            <div class="coord-revision-grupo-info">
+                                <strong>{{ $docenteDelCurso->usuario->nombres }} {{ $docenteDelCurso->usuario->apellidos }}</strong>
+                                <div class="coord-revision-grupo-sub">{{ $curso->nombre_curso }} - {{ $curso->semestre }}</div>
+                                <small data-archivos-subidos>—</small>
+                            </div>
+                            <div class="coord-revision-progreso">
+                                <div class="coord-revision-progreso-bar"><span data-progreso-bar style="width:0%"></span></div>
+                                <span data-progreso-pct>—</span>
+                            </div>
+                            <span class="c-badge c-badge-red" data-pendientes-badge hidden></span>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="coord-revision-grupo-body" hidden>
+                            <div class="coord-revision-secciones" data-secciones-archivos></div>
+
+                            <div class="c-panel coord-revision-subpanel">
+                                <div class="c-panel-header">
+                                    <i class="bi bi-journal-text"></i><h3>Sesiones de Aprendizaje</h3>
+                                    <small data-sesiones-conteo></small>
+                                </div>
+                                <div class="c-panel-body" data-sesiones-lista><div class="coord-sesiones-lista-vacia">Cargando…</div></div>
+                            </div>
+
+                            <div class="c-panel coord-revision-subpanel">
+                                <div class="c-panel-header">
+                                    <i class="bi bi-calendar-check"></i><h3>Asistencia</h3>
+                                    <select class="coord-revision-select-fecha" data-fecha-select></select>
+                                </div>
+                                <div class="c-panel-body" data-asistencia-lista><div class="coord-sesiones-lista-vacia">Cargando…</div></div>
+                            </div>
+
+                            <div class="c-panel coord-revision-subpanel">
+                                <div class="c-panel-header">
+                                    <i class="bi bi-clipboard-data"></i><h3>Notas</h3>
+                                    <select class="coord-revision-select-parcial" data-parcial-select>
+                                        <option value="I">Parcial 1</option>
+                                        <option value="II">Parcial 2</option>
+                                        <option value="III">Parcial 3</option>
+                                    </select>
+                                    <button type="button" class="c-btn c-btn-outline c-btn-sm" data-reabrir-btn hidden>
+                                        <i class="bi bi-unlock"></i> Reabrir acta
+                                    </button>
+                                    <button type="button" class="c-btn c-btn-primary c-btn-sm" data-guardar-notas-btn>
+                                        <i class="bi bi-save"></i> Guardar
+                                    </button>
+                                </div>
+                                <div class="c-panel-body">
+                                    <div class="coord-portafolio-form-error" data-notas-error></div>
+                                    <div data-notas-lista><div class="coord-sesiones-lista-vacia">Cargando…</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <p class="coord-portafolio-empty">Aún no hay cursos con docente asignado en tu programa.</p>
+                @endforelse
             </div>
         </div>
 
@@ -95,7 +140,7 @@
                 <div class="c-panel">
                     <div class="c-panel-body">
                         <div class="coord-portafolio-toolbar">
-                            <select id="coord-mi-portafolio-curso" data-id-docente="{{ $miDocente->id_docente }}" data-id-periodo="{{ $periodoActivo?->id_periodo }}">
+                            <select id="coord-mi-portafolio-curso" data-id-docente="{{ $miDocente->id_docente }}" data-id-periodo="{{ $periodoActivo?->id_periodo }}" data-periodo-codigo="{{ $periodoActivo?->codigo }}">
                                 @forelse ($miDocente->cursos as $curso)
                                     <option value="{{ $curso->id_curso }}" data-semestre="{{ $curso->semestre }}">{{ $curso->nombre_curso }} ({{ $curso->semestre }})</option>
                                 @empty
@@ -190,106 +235,179 @@
 
                 <input type="file" id="coord-sesiones-input-archivo" style="display:none">
 
-                {{-- Reutiliza las clases coord-sesiones-* (mismo layout de 3 columnas). --}}
-                <div class="c-panel coord-sesiones-manager" id="coord-notas-manager" style="display:none" data-id-docente="{{ $miDocente->id_docente }}">
+                <div class="c-panel" id="coord-notas-manager" style="display:none" data-id-docente="{{ $miDocente->id_docente }}">
                     <div class="c-panel-header">
-                        <i class="bi bi-clipboard-data"></i><h3>Ingresar Notas</h3>
+                        <i class="bi bi-clipboard-data"></i><h3>Registro de Notas</h3>
                         <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-notas-volver">Volver</button>
                     </div>
                     <div class="c-panel-body">
-                        <div class="coord-sesiones-grid">
-                            <div class="coord-sesiones-col">
-                                <h4>Acciones</h4>
-                                <div class="coord-sesiones-docente-card">
-                                    <div class="c-avatar-sm">{{ strtoupper(substr(auth()->user()->nombres, 0, 1) . substr(auth()->user()->apellidos ?? '', 0, 1)) }}</div>
-                                    <div>{{ auth()->user()->nombres }} {{ auth()->user()->apellidos }}</div>
-                                </div>
-
-                                <div class="coord-sesiones-seleccionado" id="coord-notas-seleccionado" style="display:none">
-                                    <small>SELECCIONADO</small>
-                                    <div>Curso: <strong id="coord-notas-curso-actual"></strong></div>
-                                </div>
-
-                                <label class="coord-sesiones-hint" style="display:block;font-weight:600;color:var(--navy)">Unidad</label>
-                                <select id="coord-notas-unidad" class="input-inline" style="width:100%;margin-bottom:14px">
-                                    @foreach (['I', 'II', 'III', 'IV', 'V', 'VI'] as $unidad)
-                                        <option value="{{ $unidad }}">{{ $unidad }}</option>
+                        <div class="coord-portafolio-toolbar coord-asistencia-filtro-curso">
+                            <div>
+                                <label class="coord-asistencia-filtro-curso-label">Curso <small>(según tus cursos asignados)</small></label>
+                                <select id="coord-notas-curso"></select>
+                            </div>
+                            <div>
+                                <label class="coord-asistencia-filtro-curso-label">Parcial</label>
+                                <select id="coord-notas-unidad">
+                                    @foreach (['I' => 'Parcial 1', 'II' => 'Parcial 2', 'III' => 'Parcial 3'] as $unidad => $etiqueta)
+                                        <option value="{{ $unidad }}">{{ $etiqueta }}</option>
                                     @endforeach
                                 </select>
-                                <div class="coord-portafolio-form-error" id="coord-notas-error"></div>
                             </div>
+                        </div>
 
-                            <div class="coord-sesiones-col">
-                                <h4><i class="bi bi-journal-bookmark"></i> Cursos</h4>
-                                <p class="coord-sesiones-hint">Filtra los estudiantes por curso</p>
-                                <div id="coord-notas-lista-cursos"></div>
-                            </div>
-
-                            <div class="coord-sesiones-col coord-sesiones-col-lista">
-                                <div class="coord-sesiones-lista-header">
-                                    <h4 id="coord-notas-lista-titulo"><i class="bi bi-people"></i> Seleccione un curso</h4>
+                        <div class="coord-asistencia-card-curso">
+                            <div class="coord-asistencia-curso-info">
+                                <div class="coord-asistencia-curso-icono"><i class="bi bi-code-slash"></i></div>
+                                <div>
+                                    <small>CURSO SELECCIONADO</small>
+                                    <div class="coord-asistencia-curso-nombre" id="coord-notas-curso-nombre">—</div>
+                                    <div class="coord-asistencia-curso-sub"><i class="bi bi-people"></i> <span id="coord-notas-total-estudiantes">0</span> estudiantes del semestre</div>
                                 </div>
+                            </div>
+                            <div class="coord-asistencia-curso-derecha">
+                                <div class="coord-asistencia-semestre">
+                                    <small>SEMESTRE</small>
+                                    <div id="coord-notas-semestre-valor">—</div>
+                                </div>
+                                <div class="coord-asistencia-stat">
+                                    <div class="coord-asistencia-stat-valor teal" id="coord-notas-stat-promedio">—</div>
+                                    <small>PROMEDIO</small>
+                                </div>
+                                <div class="coord-asistencia-stat">
+                                    <div class="coord-asistencia-stat-valor red" id="coord-notas-stat-desaprobados">—</div>
+                                    <small>DESAPROBADOS</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="coord-kpis" id="coord-notas-kpis">
+                            <div class="c-stat-card teal">
+                                <i class="bi bi-bar-chart c-stat-icon"></i>
+                                <div class="c-stat-label">Promedio Clase</div>
+                                <div class="c-stat-value" data-kpi="promedio">—</div>
+                            </div>
+                            <div class="c-stat-card gold">
+                                <i class="bi bi-arrow-up-circle c-stat-icon"></i>
+                                <div class="c-stat-label">Nota Más Alta</div>
+                                <div class="c-stat-value" data-kpi="mas-alta">—</div>
+                            </div>
+                            <div class="c-stat-card navy">
+                                <i class="bi bi-arrow-down-circle c-stat-icon"></i>
+                                <div class="c-stat-label">Nota Más Baja</div>
+                                <div class="c-stat-value" data-kpi="mas-baja">—</div>
+                            </div>
+                            <div class="c-stat-card red">
+                                <i class="bi bi-exclamation-circle c-stat-icon"></i>
+                                <div class="c-stat-label">Desaprobados</div>
+                                <div class="c-stat-value" data-kpi="desaprobados">—</div>
+                            </div>
+                        </div>
+
+                        <div class="c-panel coord-notas-registro-panel">
+                            <div class="c-panel-header">
+                                <i class="bi bi-journal-text"></i><h3>Registro de notas</h3>
+                                <input type="text" id="coord-notas-buscar" placeholder="Buscar estudiante…">
+                                <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-notas-imprimir">
+                                    <i class="bi bi-printer"></i> Imprimir
+                                </button>
+                                <button type="button" class="c-btn c-btn-primary c-btn-sm" id="coord-notas-guardar-todo">
+                                    <i class="bi bi-save"></i> Guardar notas
+                                </button>
+                            </div>
+                            <div class="c-panel-body" style="padding-top:0">
+                                <div class="coord-portafolio-form-error" id="coord-notas-error"></div>
                                 <div id="coord-notas-lista-estudiantes"></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="c-panel coord-sesiones-manager" id="coord-asistencia-manager" style="display:none" data-id-docente="{{ $miDocente->id_docente }}">
+                <div class="c-panel" id="coord-asistencia-manager" style="display:none" data-id-docente="{{ $miDocente->id_docente }}">
                     <div class="c-panel-header">
                         <i class="bi bi-calendar-check"></i><h3>Ingresar Asistencia</h3>
                         <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-asistencia-volver">Volver</button>
                     </div>
                     <div class="c-panel-body">
-                        <div class="coord-sesiones-grid">
-                            <div class="coord-sesiones-col">
-                                <h4>Acciones</h4>
-                                <div class="coord-sesiones-docente-card">
-                                    <div class="c-avatar-sm">{{ strtoupper(substr(auth()->user()->nombres, 0, 1) . substr(auth()->user()->apellidos ?? '', 0, 1)) }}</div>
-                                    <div>{{ auth()->user()->nombres }} {{ auth()->user()->apellidos }}</div>
-                                </div>
-
-                                <div class="coord-sesiones-seleccionado" id="coord-asistencia-seleccionado" style="display:none">
-                                    <small>SELECCIONADO</small>
-                                    <div>Curso: <strong id="coord-asistencia-curso-actual"></strong></div>
-                                </div>
-
-                                <label class="coord-sesiones-hint" style="display:block;font-weight:600;color:var(--navy)">Mes</label>
-                                <div class="coord-asistencia-mes-nav">
-                                    <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-asistencia-mes-anterior"><i class="bi bi-chevron-left"></i></button>
-                                    <span class="coord-asistencia-mes-actual" id="coord-asistencia-mes-actual">—</span>
-                                    <button type="button" class="c-btn c-btn-outline c-btn-sm" id="coord-asistencia-mes-siguiente"><i class="bi bi-chevron-right"></i></button>
-                                </div>
-
-                                <button type="button" class="c-btn c-btn-primary" id="coord-asistencia-guardar" disabled>
-                                    <i class="bi bi-save"></i> Guardar cambios
-                                </button>
-                                <p class="coord-asistencia-pendientes" id="coord-asistencia-pendientes">Sin cambios pendientes</p>
-                                <div class="coord-portafolio-form-error" id="coord-asistencia-error"></div>
+                        <div class="coord-portafolio-toolbar coord-asistencia-filtro-curso">
+                            <div>
+                                <label class="coord-asistencia-filtro-curso-label">Curso <small>(según tus cursos asignados)</small></label>
+                                <select id="coord-asistencia-curso"></select>
                             </div>
+                        </div>
 
-                            <div class="coord-sesiones-col">
-                                <h4><i class="bi bi-journal-bookmark"></i> Cursos</h4>
-                                <p class="coord-sesiones-hint">Filtra la asistencia por curso</p>
-                                <div id="coord-asistencia-lista-cursos"></div>
+                        <div class="coord-asistencia-card-curso">
+                            <div class="coord-asistencia-curso-info">
+                                <div class="coord-asistencia-curso-icono"><i class="bi bi-code-slash"></i></div>
+                                <div>
+                                    <small>CURSO SELECCIONADO</small>
+                                    <div class="coord-asistencia-curso-nombre" id="coord-asistencia-curso-nombre">—</div>
+                                    <div class="coord-asistencia-curso-sub"><i class="bi bi-people"></i> <span id="coord-asistencia-total-matriculados">0</span> estudiantes del semestre</div>
+                                </div>
                             </div>
-
-                            <div class="coord-sesiones-col coord-sesiones-col-lista">
-                                <div class="coord-sesiones-lista-header">
-                                    <h4 id="coord-asistencia-lista-titulo"><i class="bi bi-table"></i> Seleccione un curso</h4>
+                            <div class="coord-asistencia-curso-derecha">
+                                <div class="coord-asistencia-semestre">
+                                    <small>SEMESTRE</small>
+                                    <div id="coord-asistencia-semestre-valor">—</div>
                                 </div>
-                                <div class="coord-asistencia-leyenda">
-                                    <span><i style="background:rgba(26,191,160,.5)"></i> Presente (clic para cambiar)</span>
-                                    <span><i style="background:rgba(212,160,23,.5)"></i> Tardanza</span>
-                                    <span><i style="background:rgba(224,80,80,.5)"></i> Ausente</span>
-                                    <span><i style="background:rgba(11,28,58,.3)"></i> Justificado</span>
-                                    <span><i style="background:var(--surface);border:1px solid var(--border)"></i> Sin sesión (clic para tomarla)</span>
+                                <div class="coord-asistencia-stat">
+                                    <div class="coord-asistencia-stat-valor teal" id="coord-asistencia-stat-pct">—</div>
+                                    <small>ASISTENCIA</small>
                                 </div>
-                                <div class="coord-asistencia-matriz-scroll">
-                                    <table class="coord-asistencia-matriz" id="coord-asistencia-tabla"></table>
+                                <div class="coord-asistencia-stat">
+                                    <div class="coord-asistencia-stat-valor red" id="coord-asistencia-stat-ausentes">—</div>
+                                    <small>AUSENTES HOY</small>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="coord-asistencia-card-fecha">
+                            <div class="coord-asistencia-fecha-info">
+                                <i class="bi bi-calendar-week"></i>
+                                <div>
+                                    <small>FECHA DE LA SESIÓN</small>
+                                    <div class="coord-asistencia-fecha-nav">
+                                        <strong id="coord-asistencia-fecha-texto">—</strong>
+                                        <button type="button" id="coord-asistencia-fecha-anterior" class="c-btn c-btn-outline c-btn-sm"><i class="bi bi-chevron-left"></i></button>
+                                        <button type="button" id="coord-asistencia-fecha-siguiente" class="c-btn c-btn-outline c-btn-sm"><i class="bi bi-chevron-right"></i></button>
+                                        <button type="button" id="coord-asistencia-fecha-hoy" class="c-btn c-btn-outline c-btn-sm">Hoy</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" id="coord-asistencia-guardar" class="c-btn c-btn-primary">
+                                <i class="bi bi-save"></i> Guardar asistencia
+                            </button>
+                        </div>
+
+                        <div class="coord-portafolio-form-error" id="coord-asistencia-error"></div>
+
+                        <div id="coord-asistencia-alerta" class="c-panel" hidden>
+                            <div class="c-panel-header"><i class="bi bi-exclamation-triangle"></i><h3>Estudiantes con asistencia menor a 70%</h3></div>
+                            <div class="c-panel-body" id="coord-asistencia-alerta-lista"></div>
+                        </div>
+
+                        <div class="coord-asistencia-filtros">
+                            <div class="coord-asistencia-chips">
+                                <button type="button" class="coord-asistencia-chip" data-filtro="PRESENTE">
+                                    <span class="coord-asistencia-dot teal"></span> Presentes <strong id="coord-asistencia-chip-presentes">0</strong>
+                                </button>
+                                <button type="button" class="coord-asistencia-chip" data-filtro="TARDANZA">
+                                    <span class="coord-asistencia-dot gold"></span> Tardanzas <strong id="coord-asistencia-chip-tardanzas">0</strong>
+                                </button>
+                                <button type="button" class="coord-asistencia-chip" data-filtro="AUSENTE">
+                                    <span class="coord-asistencia-dot red"></span> Ausentes <strong id="coord-asistencia-chip-ausentes">0</strong>
+                                </button>
+                            </div>
+                            <div class="coord-asistencia-acciones-lista">
+                                <input type="text" id="coord-asistencia-buscar" placeholder="Buscar estudiante…">
+                                <button type="button" id="coord-asistencia-marcar-todos" class="c-btn c-btn-outline c-btn-sm">
+                                    <i class="bi bi-check2-all"></i> Marcar todos presentes
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="coord-asistencia-lista"></div>
+                        <p class="coord-portafolio-empty" id="coord-asistencia-vacio" style="display:none">No hay estudiantes registrados en el semestre de este curso.</p>
                     </div>
                 </div>
             @else

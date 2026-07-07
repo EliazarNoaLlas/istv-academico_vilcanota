@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Coordinador;
 use App\Http\Controllers\Controller;
 use App\Models\Curso;
 use App\Models\Docente;
-use App\Models\MatriculaCurso;
 use App\Models\PeriodoAcademico;
 use App\Models\Scopes\CoordinadorProgramaDirectoScope;
 use App\Services\Academic\AsistenciaService;
@@ -78,61 +77,57 @@ class CoordinadorPortafolioController extends Controller
         return [$miDocente, $curso];
     }
 
+    /** Estudiantes del curso (segun su semestre) con la nota del parcial indicado y el resumen de la clase. */
     public function estudiantesNotas(Request $request): JsonResponse
     {
         $idCurso = (int) $request->query('id_curso');
         $unidad = (string) $request->query('unidad', 'I');
-        $this->miDocenteDeCurso($idCurso);
+        [, $curso] = $this->miDocenteDeCurso($idCurso);
 
-        return response()->json(['ok' => true, 'estudiantes' => $this->notas->estudiantesDeCurso($idCurso, $unidad)]);
+        return response()->json(['ok' => true] + $this->notas->estudiantesDeCurso($curso, $unidad));
     }
 
-    public function guardarNota(Request $request): JsonResponse
-    {
-        $datos = $request->validate([
-            'id_matricula_curso' => ['required', 'integer', 'exists:matricula_cursos,id_matricula_curso'],
-            'unidad' => ['required', 'string', 'in:I,II,III,IV,V,VI'],
-            'practica' => ['nullable', 'numeric', 'min:0', 'max:20'],
-            'teoria' => ['nullable', 'numeric', 'min:0', 'max:20'],
-            'examen' => ['nullable', 'numeric', 'min:0', 'max:20'],
-        ]);
-
-        $matriculaCurso = MatriculaCurso::findOrFail($datos['id_matricula_curso']);
-        $this->miDocenteDeCurso($matriculaCurso->id_curso);
-
-        $nota = $this->notas->guardarNota(
-            $datos['id_matricula_curso'],
-            $datos['unidad'],
-            $datos['practica'] ?? null,
-            $datos['teoria'] ?? null,
-            $datos['examen'] ?? null,
-        );
-
-        return response()->json(['ok' => true, 'nota' => $nota]);
-    }
-
-    /** Matriz estudiantes x dias del mes para marcar asistencia sin tener que "cargar" una sesion primero. */
-    public function matrizAsistencia(Request $request): JsonResponse
-    {
-        $idCurso = (int) $request->query('id_curso');
-        $mes = (string) $request->query('mes', now()->format('Y-m'));
-        [$miDocente] = $this->miDocenteDeCurso($idCurso);
-
-        return response()->json(['ok' => true] + $this->asistencia->matrizDeCurso($idCurso, $miDocente->id_docente, $mes));
-    }
-
-    public function guardarMatrizAsistencia(Request $request): JsonResponse
+    /** Guarda todas las filas del registro de notas en una sola peticion/transaccion (no una por estudiante). */
+    public function guardarNotasLote(Request $request): JsonResponse
     {
         $datos = $request->validate([
             'id_curso' => ['required', 'integer'],
-            'cambios' => ['required', 'array', 'min:1'],
-            'cambios.*' => ['array'],
-            'cambios.*.*.id_estudiante' => ['required', 'integer'],
-            'cambios.*.*.estado' => ['required', 'string', 'in:PRESENTE,TARDANZA,AUSENTE,JUSTIFICADO'],
+            'unidad' => ['required', 'string', 'in:I,II,III'],
+            'filas' => ['required', 'array', 'min:1'],
+            'filas.*.id_matricula_curso' => ['required', 'integer', 'exists:matricula_cursos,id_matricula_curso'],
+            'filas.*.practica' => ['nullable', 'numeric', 'min:0', 'max:20'],
+            'filas.*.teoria' => ['nullable', 'numeric', 'min:0', 'max:20'],
+            'filas.*.examen' => ['nullable', 'numeric', 'min:0', 'max:20'],
         ]);
-        [$miDocente] = $this->miDocenteDeCurso($datos['id_curso']);
+        [, $curso] = $this->miDocenteDeCurso($datos['id_curso']);
 
-        $this->asistencia->guardarCambiosMatriz($datos['id_curso'], $miDocente->id_docente, $datos['cambios']);
+        $this->notas->guardarNotasLote($curso, $datos['unidad'], $datos['filas']);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** Estudiantes del curso (segun su semestre) y asistencia real de la fecha, con resumen y alerta de asistencia historica baja. */
+    public function asistenciaPorFecha(Request $request): JsonResponse
+    {
+        $idCurso = (int) $request->query('id_curso');
+        $fecha = (string) $request->query('fecha', now()->toDateString());
+        [$miDocente, $curso] = $this->miDocenteDeCurso($idCurso);
+
+        return response()->json(['ok' => true, 'fecha' => $fecha] + $this->asistencia->estudiantesPorFecha($curso, $miDocente->id_docente, $fecha));
+    }
+
+    public function guardarAsistencia(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'id_curso' => ['required', 'integer'],
+            'fecha' => ['required', 'date'],
+            'registros' => ['required', 'array', 'min:1'],
+            'registros.*.id_estudiante' => ['required', 'integer'],
+            'registros.*.estado' => ['required', 'string', 'in:PRESENTE,TARDANZA,AUSENTE,JUSTIFICADO'],
+        ]);
+        [$miDocente, $curso] = $this->miDocenteDeCurso($datos['id_curso']);
+
+        $this->asistencia->guardarAsistencia($curso, $miDocente->id_docente, $datos['fecha'], $datos['registros']);
 
         return response()->json(['ok' => true]);
     }
