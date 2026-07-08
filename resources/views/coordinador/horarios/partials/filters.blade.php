@@ -1,4 +1,4 @@
-<div class="coord-horarios-ciclo-bar">
+<div class="coord-horarios-ciclo-bar" data-id-programa="{{ auth()->user()->id_programa }}">
     <span class="coord-muted">CICLO:</span>
     <button type="button" class="c-btn c-btn-outline c-btn-sm" data-ciclo="">Todos</button>
     @foreach (['I', 'II', 'III', 'IV', 'V', 'VI'] as $ciclo)

@@ -370,10 +370,19 @@ function limpiarHorario() {
 }
 
 let idGeneracionIaActual = null;
+let modoGeneracionActual = 'ia';
+let contextoDsiActual = null;
+let esAlternativaActual = false;
+let accionBotonReparar = 'reparar';
 
 function idPeriodoSeleccionado() {
     const select = document.getElementById('coord-horarios-filtro-periodo');
     return select?.selectedOptions[0]?.dataset.idPeriodo ?? null;
+}
+
+/** El select de programa puede quedar en "Todos los programas": el coordinador solo tiene el suyo, guardado en data-id-programa. */
+function idProgramaPropio() {
+    return document.querySelector('.coord-horarios-ciclo-bar')?.dataset.idPrograma ?? null;
 }
 
 function abrirModalIa() {
@@ -383,6 +392,34 @@ function abrirModalIa() {
 function cerrarModalIa() {
     document.getElementById('coord-horarios-ia-modal')?.classList.remove('show');
     idGeneracionIaActual = null;
+    modoGeneracionActual = 'ia';
+    contextoDsiActual = null;
+    esAlternativaActual = false;
+    accionBotonReparar = 'reparar';
+}
+
+/** Fase 3: exige semestre especifico (nunca "Todos") antes de generar con el algoritmo determinista. */
+function validarFiltrosDsi() {
+    const filtros = filtrosActuales();
+    const idPrograma = idProgramaPropio();
+    const idPeriodo = idPeriodoSeleccionado();
+
+    if (!idPrograma) {
+        mostrarConflictos(['Su cuenta de coordinador no tiene un programa asignado. Contacte a Dirección Académica.']);
+
+        return null;
+    }
+    if (!filtros.semestre) {
+        mostrarConflictos(['Seleccione un ciclo específico (no "Todos") antes de generar.']);
+
+        return null;
+    }
+    if (!idPeriodo) {
+        mostrarConflictos(['Seleccione un periodo académico antes de generar.']);
+
+        return null;
+    }
+    return { id_programa: idPrograma, id_periodo: idPeriodo, semestre: filtros.semestre };
 }
 
 function pintarResultadoIa(data) {
@@ -437,6 +474,236 @@ function llamarApiIa(url, method = 'POST') {
         method,
         headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken },
     }).then((res) => res.json());
+}
+
+/** Pinta el resultado de generarSemestreDsi/repararSemestreDsi: exito ya guardado, o BORRADOR reparable con conflictos. */
+function pintarResultadoDsi(data) {
+    modoGeneracionActual = 'dsi';
+    idGeneracionIaActual = data.id_generacion ?? null;
+
+    document.getElementById('coord-horarios-ia-titulo').textContent = `Generación de horario — Ciclo ${data.semestre ?? ''}`;
+    document.getElementById('coord-horarios-ia-estado').textContent = `Estado: ${data.estado ?? '—'} · Proveedor: local (determinista)`;
+
+    const errorBox = document.getElementById('coord-horarios-ia-error');
+    if (!data.ok) {
+        errorBox.textContent = data.mensaje ?? 'No se pudo generar el horario.';
+        errorBox.classList.add('show');
+    } else {
+        errorBox.classList.remove('show');
+    }
+
+    const horarios = data.horarios ?? [];
+    const tbody = document.getElementById('coord-horarios-ia-tbody');
+    tbody.innerHTML = horarios.length
+        ? horarios.map((h) => `
+            <tr>
+                <td>${h.curso?.nombre_curso ?? h.id_curso}</td>
+                <td>${h.docente ? `${h.docente.usuario?.nombres ?? ''} ${h.docente.usuario?.apellidos ?? ''}` : h.id_docente}</td>
+                <td>${h.aula ?? '—'}</td>
+                <td>${h.dia}</td>
+                <td>${(h.hora_inicio ?? '').slice(0, 5)}</td>
+                <td>${(h.hora_fin ?? '').slice(0, 5)}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="6" class="coord-portafolio-empty">Sin bloques.</td></tr>';
+
+    const resumen = data.resumen ?? null;
+    const observacionesBox = document.getElementById('coord-horarios-ia-observaciones-box');
+    if (resumen) {
+        document.getElementById('coord-horarios-ia-observaciones').innerHTML = `
+            <li>Cursos cubiertos: ${resumen.cursos ?? '—'}</li>
+            <li>Bloques requeridos: ${resumen.bloques_requeridos ?? '—'}</li>
+            <li>Bloques generados: ${resumen.bloques_generados ?? '—'}</li>
+            <li>Docentes usados: ${resumen.docentes_usados ?? '—'}</li>
+            <li>Aulas usadas: ${resumen.aulas_usadas ?? '—'}</li>
+        `;
+        observacionesBox.style.display = 'block';
+    } else {
+        observacionesBox.style.display = 'none';
+    }
+
+    const conflictos = data.conflictos ?? [];
+    const listaConflictos = conflictos.slice(0, 20).map((c) => (typeof c === 'string' ? c : `${c.nombre_curso ?? `Curso #${c.id_curso}`}: ${c.horas_sin_ubicar} hora(s) sin ubicar`));
+    if (conflictos.length > 20) listaConflictos.push(`Se encontraron ${conflictos.length} conflictos. Mostrando los primeros 20.`);
+    const conflictosBox = document.getElementById('coord-horarios-ia-conflictos-box');
+    document.getElementById('coord-horarios-ia-conflictos').innerHTML = listaConflictos.map((m) => `<li>${m}</li>`).join('');
+    conflictosBox.style.display = conflictos.length ? 'block' : 'none';
+
+    const botonAprobar = document.getElementById('coord-horarios-ia-aprobar');
+    const botonReparar = document.getElementById('coord-horarios-ia-reparar');
+    const botonDescartar = document.getElementById('coord-horarios-ia-descartar');
+
+    esAlternativaActual = data.ok && data.estado === 'BORRADOR' && !!data.id_generacion;
+
+    if (data.estado === 'HORARIO_EXISTENTE') {
+        // Ya hay horario real para este ciclo: en vez de un error simple, se ofrece generar una alternativa.
+        accionBotonReparar = 'nueva_propuesta';
+        botonAprobar.style.display = 'none';
+        botonDescartar.style.display = 'none';
+        botonReparar.style.display = '';
+        botonReparar.innerHTML = '<i class="bi bi-shuffle"></i> Generar nueva propuesta';
+    } else if (esAlternativaActual) {
+        // Propuesta alternativa valida y lista para revisar: aprobar reemplaza el horario real de este ciclo.
+        accionBotonReparar = 'reparar';
+        botonReparar.style.display = 'none';
+        botonDescartar.style.display = '';
+        botonAprobar.style.display = '';
+        botonAprobar.disabled = false;
+        botonAprobar.innerHTML = '<i class="bi bi-check2-circle"></i> Aprobar y reemplazar horario actual';
+    } else {
+        // DSI normal: o genera ya validado (GENERADO), o guarda BORRADOR solo reparable.
+        accionBotonReparar = 'reparar';
+        botonAprobar.style.display = 'none';
+        botonReparar.innerHTML = '<i class="bi bi-wrench-adjustable"></i> Reparar';
+        botonReparar.style.display = !data.ok && data.id_generacion ? '' : 'none';
+        botonDescartar.style.display = !data.ok && data.id_generacion ? '' : 'none';
+    }
+}
+
+function generarSemestreDsiUI(opciones = {}) {
+    const contexto = validarFiltrosDsi();
+    if (!contexto) return;
+
+    contexto.modo = opciones.modo ?? 'normal';
+    contextoDsiActual = contexto;
+    modoGeneracionActual = 'dsi';
+
+    abrirModalIa();
+    document.getElementById('coord-horarios-ia-titulo').textContent = `Generación de horario — Ciclo ${contexto.semestre}`;
+    document.getElementById('coord-horarios-ia-estado').textContent = contexto.modo === 'nueva_propuesta' ? 'Generando nueva propuesta…' : 'Generando propuesta…';
+    document.getElementById('coord-horarios-ia-tbody').innerHTML = '<tr><td colspan="6" class="coord-portafolio-empty">Generando…</td></tr>';
+
+    fetch('/api/coordinador/horarios/dsi/generar-semestre', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify(contexto),
+    })
+        .then((res) => res.json())
+        .then((data) => {
+            pintarResultadoDsi(data);
+            if (data.estado === 'GENERADO') cargarHorario();
+        })
+        .catch(() => {
+            document.getElementById('coord-horarios-ia-error').textContent = 'No se pudo contactar al servidor.';
+            document.getElementById('coord-horarios-ia-error').classList.add('show');
+        });
+}
+
+function repararSemestreDsiUI() {
+    if (!contextoDsiActual) return;
+
+    document.getElementById('coord-horarios-ia-estado').textContent = 'Reparando…';
+
+    fetch('/api/coordinador/horarios/dsi/reparar-semestre', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify(contextoDsiActual),
+    })
+        .then((res) => res.json())
+        .then((data) => {
+            pintarResultadoDsi(data);
+            if (data.ok) cargarHorario();
+        });
+}
+
+function pintarResultadoDsiMultiple(data) {
+    modoGeneracionActual = 'dsi-multiple';
+    idGeneracionIaActual = null;
+
+    document.getElementById('coord-horarios-ia-titulo').textContent = 'Generación de horario — Ciclos pendientes (II, IV, V, VI)';
+    document.getElementById('coord-horarios-ia-estado').textContent = `Estado: ${data.estado ?? '—'}`;
+    document.getElementById('coord-horarios-ia-error').classList.remove('show');
+    document.getElementById('coord-horarios-ia-tbody').innerHTML = '<tr><td colspan="6" class="coord-portafolio-empty">Ver resumen por ciclo abajo.</td></tr>';
+
+    const resumen = data.resumen_global ?? {};
+    const detalleSemestres = (data.resultados ?? [])
+        .map((r) => `<li>Ciclo ${r.semestre}: ${r.estado}${r.ok ? ` (${r.resumen?.bloques_generados ?? 0} bloques)` : ` — ${r.mensaje ?? ''}`}</li>`)
+        .join('');
+
+    document.getElementById('coord-horarios-ia-observaciones').innerHTML = `
+        ${detalleSemestres}
+        <li>Ciclos generados: ${(resumen.semestres_generados ?? []).join(', ') || '—'}</li>
+        <li>Ciclos protegidos (no tocados): ${(resumen.semestres_no_tocados ?? []).join(', ') || '—'}</li>
+        <li>Total de bloques generados: ${resumen.bloques_generados ?? 0}</li>
+    `;
+    document.getElementById('coord-horarios-ia-observaciones-box').style.display = 'block';
+    document.getElementById('coord-horarios-ia-conflictos-box').style.display = 'none';
+    document.getElementById('coord-horarios-ia-aprobar').style.display = 'none';
+    document.getElementById('coord-horarios-ia-reparar').style.display = 'none';
+    document.getElementById('coord-horarios-ia-descartar').style.display = 'none';
+}
+
+function generarTodosSemestresDsiUI() {
+    const idPrograma = idProgramaPropio();
+    const idPeriodo = idPeriodoSeleccionado();
+
+    if (!idPrograma) {
+        mostrarConflictos(['Su cuenta de coordinador no tiene un programa asignado. Contacte a Dirección Académica.']);
+
+        return;
+    }
+    if (!idPeriodo) {
+        mostrarConflictos(['Seleccione un periodo académico antes de generar.']);
+
+        return;
+    }
+
+    modoGeneracionActual = 'dsi-multiple';
+    abrirModalIa();
+    document.getElementById('coord-horarios-ia-titulo').textContent = 'Generación de horario — Ciclos pendientes (II, IV, V, VI)';
+    document.getElementById('coord-horarios-ia-estado').textContent = 'Generando propuestas…';
+    document.getElementById('coord-horarios-ia-tbody').innerHTML = '<tr><td colspan="6" class="coord-portafolio-empty">Generando…</td></tr>';
+
+    fetch('/api/coordinador/horarios/dsi/generar-pendientes', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ id_programa: idPrograma, id_periodo: idPeriodo }),
+    })
+        .then((res) => res.json())
+        .then((data) => {
+            pintarResultadoDsiMultiple(data);
+            cargarHorario();
+        })
+        .catch(() => {
+            document.getElementById('coord-horarios-ia-error').textContent = 'No se pudo contactar al servidor.';
+            document.getElementById('coord-horarios-ia-error').classList.add('show');
+        });
+}
+
+/** Reparar puede venir del flujo generico (Gemini/Grok), del determinista DSI, o (repurposed) pedir una nueva propuesta. */
+function repararClick() {
+    if (modoGeneracionActual === 'dsi' && accionBotonReparar === 'nueva_propuesta') {
+        generarSemestreDsiUI({ modo: 'nueva_propuesta' });
+    } else if (modoGeneracionActual === 'dsi') {
+        repararSemestreDsiUI();
+    } else {
+        repararGeneracionIa();
+    }
+}
+
+/** Aprobar puede venir del flujo generico (Gemini/Grok) o de una propuesta alternativa DSI que reemplaza el ciclo actual. */
+function aprobarClick() {
+    if (modoGeneracionActual === 'dsi' && esAlternativaActual) {
+        aprobarPropuestaAlternativaUI();
+    } else {
+        aprobarGeneracionIa();
+    }
+}
+
+function aprobarPropuestaAlternativaUI() {
+    if (!idGeneracionIaActual) return;
+    if (!confirm('Se reemplazará el horario actual de este ciclo con la nueva propuesta. No afecta otros ciclos ni programas. ¿Continuar?')) return;
+
+    llamarApiIa(`/api/coordinador/horarios/ia/${idGeneracionIaActual}/aprobar`)
+        .then((data) => {
+            if (data.ok) {
+                cerrarModalIa();
+                cargarHorario();
+            } else {
+                document.getElementById('coord-horarios-ia-error').textContent = data.mensaje ?? 'No se pudo aprobar la propuesta.';
+                document.getElementById('coord-horarios-ia-error').classList.add('show');
+            }
+        });
 }
 
 function generarIA(endpoint) {
@@ -553,13 +820,13 @@ export function initCoordinadorHorarios() {
 
     document.getElementById('coord-horarios-detectar')?.addEventListener('click', detectarConflictos);
     document.getElementById('coord-horarios-limpiar')?.addEventListener('click', limpiarHorario);
-    document.getElementById('coord-horarios-generar-semestre')?.addEventListener('click', () => generarIA('/api/coordinador/horarios/generar-semestre'));
-    document.getElementById('coord-horarios-generar-todos')?.addEventListener('click', () => generarIA('/api/coordinador/horarios/generar-todos'));
+    document.getElementById('coord-horarios-generar-semestre')?.addEventListener('click', generarSemestreDsiUI);
+    document.getElementById('coord-horarios-generar-todos')?.addEventListener('click', generarTodosSemestresDsiUI);
 
     document.getElementById('coord-horarios-ia-cerrar')?.addEventListener('click', cerrarModalIa);
-    document.getElementById('coord-horarios-ia-aprobar')?.addEventListener('click', aprobarGeneracionIa);
+    document.getElementById('coord-horarios-ia-aprobar')?.addEventListener('click', aprobarClick);
     document.getElementById('coord-horarios-ia-descartar')?.addEventListener('click', descartarGeneracionIa);
-    document.getElementById('coord-horarios-ia-reparar')?.addEventListener('click', repararGeneracionIa);
+    document.getElementById('coord-horarios-ia-reparar')?.addEventListener('click', repararClick);
 
     actualizarTituloPrograma();
 }

@@ -3,6 +3,8 @@
 namespace App\Services\Horarios;
 
 use App\Models\Aula;
+use App\Models\Curso;
+use App\Models\Docente;
 use App\Models\Horario;
 use App\Models\HorarioIaGenerado;
 use App\Models\PeriodoAcademico;
@@ -24,9 +26,9 @@ use Throwable;
  */
 class HorarioAiGeneratorService
 {
-    /** Semestres que Fase 3 genera automaticamente; I y III ya existen y no se tocan. */
-    private const SEMESTRES_GENERABLES_DSI = ['II', 'IV', 'V', 'VI'];
-    private const SEMESTRES_PROTEGIDOS_DSI = ['I', 'III'];
+    /** Semestres que este flujo puede generar/regenerar (los 6 del programa). */
+    private const SEMESTRES_GENERABLES_DSI = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+    private const SEMESTRES_PROTEGIDOS_DSI = [];
 
     /** 5 dias x 6 bloques utiles (sin receso) = capacidad semanal de la tabla. */
     private const TOTAL_SLOTS_SEMANA = 30;
@@ -99,6 +101,10 @@ class HorarioAiGeneratorService
 
         $detalles = $generacion->resultado_json['detalles'] ?? [];
         $filtro = $generacion->metadata_json['filtro'] ?? ['id_programa' => null, 'semestre' => null];
+
+        if ($generacion->metadata_json['es_alternativa'] ?? false) {
+            return $this->aprobarPropuestaAlternativa($generacion, $detalles, $filtro);
+        }
 
         [$errores, $conflictos] = $this->validarTodo($detalles, $generacion->id_periodo);
 
@@ -238,6 +244,62 @@ class HorarioAiGeneratorService
         $this->persistencia->guardar($bloques, $filtrosPersistencia);
     }
 
+    /**
+     * Fase 6: aprueba una propuesta alternativa. Revalida contra el estado
+     * real ACTUAL (no el que habia al generar: pudo cambiar mientras tanto),
+     * excluyendo el propio programa/semestre -que es justamente lo que se va
+     * a reemplazar-, y aborta si aparecieron bloques MANUAL en ese semestre
+     * (mismo resguardo que regenerarSemestreDsi). Solo entonces reemplaza,
+     * dentro de una transaccion, unicamente ese programa/periodo/semestre.
+     */
+    private function aprobarPropuestaAlternativa(HorarioIaGenerado $generacion, array $detalles, array $filtro): array
+    {
+        $idPrograma = $filtro['id_programa'] ?? null;
+        $idPeriodo = $filtro['id_periodo'] ?? $generacion->id_periodo;
+        $semestre = $filtro['semestre'] ?? null;
+
+        if (! $idPrograma || ! $semestre) {
+            return $this->respuesta($generacion, false, 'La propuesta no tiene programa/semestre valido asociado.');
+        }
+
+        $tieneManual = Horario::where('id_programa', $idPrograma)
+            ->where('id_periodo', $idPeriodo)
+            ->where('semestre', $semestre)
+            ->where('fuente', 'MANUAL')
+            ->exists();
+
+        if ($tieneManual) {
+            return $this->respuesta($generacion, false, "El semestre {$semestre} tiene bloques cargados manualmente desde entonces. Edite o elimine esos bloques desde el editor antes de reemplazar; no se sobrescriben automaticamente.");
+        }
+
+        $ocupacionDocente = $this->ocupacionExistente($idPeriodo, 'id_docente', $idPrograma, $semestre);
+        $ocupacionAula = $this->ocupacionExistente($idPeriodo, 'id_aula', $idPrograma, $semestre);
+
+        $conflictos = [];
+        foreach ($detalles as $d) {
+            $clave = $d['dia'].'|'.substr((string) $d['hora_inicio'], 0, 5);
+            if (in_array((int) $d['id_docente'], $ocupacionDocente[$clave] ?? [], true)) {
+                $conflictos[] = "El docente ya tiene otro bloque fuera de este semestre el {$d['dia']} a las {$d['hora_inicio']}.";
+            }
+            if (! empty($d['id_aula']) && in_array((int) $d['id_aula'], $ocupacionAula[$clave] ?? [], true)) {
+                $conflictos[] = "El aula ya esta ocupada fuera de este semestre el {$d['dia']} a las {$d['hora_inicio']}.";
+            }
+        }
+
+        $conflictos = array_merge($conflictos, $this->conflictos->detectar($detalles));
+
+        if ($conflictos !== []) {
+            $generacion->fill(['errores_json' => ['conflictos' => $conflictos]])->save();
+
+            return $this->respuesta($generacion, false, 'La propuesta ya no es valida porque el estado real cambio desde que se genero; genere una nueva propuesta.');
+        }
+
+        $this->persistencia->guardar($detalles, ['id_programa' => $idPrograma, 'semestre' => $semestre]);
+        $generacion->fill(['estado' => 'APROBADO', 'errores_json' => null])->save();
+
+        return $this->respuesta($generacion, true, "Horario del semestre {$semestre} reemplazado correctamente con la nueva propuesta.");
+    }
+
     private function resolverProveedor(string $nombre): LlmHorarioProviderInterface
     {
         return match ($nombre) {
@@ -276,16 +338,20 @@ class HorarioAiGeneratorService
 
     /**
      * Fase 3: genera de forma determinista (sin LLM) el horario semanal de
-     * UN semestre DSI. No toca I ni III (protegidos), no duplica si ya
-     * existe horario, y no genera si hay cursos sin docente. La propuesta se
-     * construye respetando de entrada la disponibilidad real de docentes y
-     * aulas (incluye lo ya guardado de otros semestres), asi que en el caso
-     * normal no llega a necesitar HorarioRepairService.
+     * UN semestre DSI. No duplica si ya existe horario (salvo modo
+     * nueva_propuesta), y no genera si hay cursos sin docente. La propuesta
+     * se construye respetando de entrada la disponibilidad real de docentes
+     * y aulas (incluye lo ya guardado de otros semestres), asi que en el
+     * caso normal no llega a necesitar HorarioRepairService.
+     *
+     * @param string $modo 'normal' (default: si ya existe horario, no lo toca) o
+     *                     'nueva_propuesta' (genera una alternativa como BORRADOR sin
+     *                     tocar el horario real; requiere aprobar() para reemplazarlo).
      */
-    public function generarSemestreDsi(int $idPrograma, int $idPeriodo, string $semestre): array
+    public function generarSemestreDsi(int $idPrograma, int $idPeriodo, string $semestre, string $modo = 'normal', ?int $seed = null): array
     {
         if (! in_array($semestre, self::SEMESTRES_GENERABLES_DSI, true)) {
-            return $this->respuestaSemestre($semestre, false, 'SEMESTRE_NO_PERMITIDO', "El semestre {$semestre} no se genera con este flujo (ya existe y esta protegido, o esta fuera de alcance).");
+            return $this->respuestaSemestre($semestre, false, 'SEMESTRE_NO_PERMITIDO', "El semestre {$semestre} no es valido para este flujo.");
         }
 
         $resumen = $this->consultas->resumenPorSemestre($idPrograma, $idPeriodo)->firstWhere('semestre', $semestre);
@@ -298,7 +364,9 @@ class HorarioAiGeneratorService
             return $this->respuestaSemestre($semestre, false, 'CURSOS_SIN_DOCENTE', "El semestre {$semestre} tiene {$resumen['cursos_sin_docente']} curso(s) sin docente asignado.");
         }
 
-        if ($resumen['bloques_generados'] > 0) {
+        $esAlternativa = $modo === 'nueva_propuesta' && $resumen['bloques_generados'] > 0;
+
+        if ($resumen['bloques_generados'] > 0 && ! $esAlternativa) {
             return $this->respuestaSemestre($semestre, false, 'HORARIO_EXISTENTE', "El semestre {$semestre} ya tiene {$resumen['bloques_generados']} bloque(s) generados. No se duplica.");
         }
 
@@ -313,9 +381,24 @@ class HorarioAiGeneratorService
             return $this->respuestaSemestre($semestre, false, 'SIN_CAPACIDAD', 'No hay aulas disponibles para generar el horario.');
         }
 
-        [$detalles, $pendientes] = $this->ubicarBloques($cursos, $aulas, $this->slotsSemana(), $idPeriodo, $semestre);
+        if ($esAlternativa && $seed === null) {
+            $seed = random_int(1, 999999);
+        }
+
+        // Alternativa: excluye del calculo de ocupacion los bloques reales de
+        // ESTE mismo programa/semestre (son justamente los que se van a
+        // reemplazar si el usuario aprueba), pero sigue respetando docentes y
+        // aulas usados por otros programas/semestres.
+        [$detalles, $pendientes] = $this->ubicarBloques(
+            $cursos, $aulas, $this->slotsSemana($seed), $idPeriodo, $semestre,
+            $esAlternativa ? $idPrograma : null,
+        );
 
         if ($pendientes !== []) {
+            if ($esAlternativa) {
+                return $this->respuestaSemestre($semestre, false, 'CONFLICTOS_NO_REPARABLES', "No se pudo completar una propuesta alternativa para el semestre {$semestre} con este orden. Intente generar de nuevo.");
+            }
+
             return $this->guardarBorradorYReportar($semestre, $idPeriodo, $idPrograma, $detalles, $pendientes, 'CONFLICTOS_NO_REPARABLES', "No se pudieron ubicar todas las horas del semestre {$semestre} sin cruces de docente o aula.");
         }
 
@@ -327,22 +410,79 @@ class HorarioAiGeneratorService
         }
 
         if ($errores !== [] || $conflictos !== []) {
+            if ($esAlternativa) {
+                return $this->respuestaSemestre($semestre, false, 'CONFLICTOS_NO_REPARABLES', "La propuesta alternativa del semestre {$semestre} quedo con conflictos. Intente generar de nuevo.");
+            }
+
             return $this->guardarBorradorYReportar($semestre, $idPeriodo, $idPrograma, $detalles, array_merge($errores, $conflictos), 'CONFLICTOS_NO_REPARABLES', "La propuesta del semestre {$semestre} quedo con conflictos incluso despues de reparar.");
+        }
+
+        $resumenNuevo = [
+            'cursos' => $cursos->count(),
+            'bloques_requeridos' => $resumen['bloques_requeridos'],
+            'bloques_generados' => count($detalles),
+            'docentes_usados' => collect($detalles)->pluck('id_docente')->unique()->count(),
+            'aulas_usadas' => collect($detalles)->pluck('aula')->unique()->count(),
+            'conflictos' => 0,
+        ];
+
+        if ($esAlternativa) {
+            return $this->guardarPropuestaAlternativa($semestre, $idPeriodo, $idPrograma, $detalles, $resumen['bloques_generados'], $resumenNuevo, $seed);
         }
 
         $this->persistencia->guardar($detalles, ['semestre' => $semestre, 'id_programa' => $idPrograma]);
 
         return $this->respuestaSemestre($semestre, true, 'GENERADO', "Horario generado correctamente para el semestre {$semestre}.", [
-            'resumen' => [
-                'cursos' => $cursos->count(),
-                'bloques_requeridos' => $resumen['bloques_requeridos'],
-                'bloques_generados' => count($detalles),
-                'docentes_usados' => collect($detalles)->pluck('id_docente')->unique()->count(),
-                'aulas_usadas' => collect($detalles)->pluck('aula')->unique()->count(),
-                'conflictos' => 0,
-            ],
+            'resumen' => $resumenNuevo,
             'horarios' => $this->horariosPersistidos($idPrograma, $idPeriodo, $semestre),
         ]);
+    }
+
+    /** Fase 6: guarda una propuesta alternativa como BORRADOR sin tocar el horario real; requiere aprobar() explicito para reemplazarlo. */
+    private function guardarPropuestaAlternativa(string $semestre, int $idPeriodo, int $idPrograma, array $detalles, int $bloquesActuales, array $resumenNuevo, ?int $seed): array
+    {
+        $generacion = HorarioIaGenerado::create([
+            'id_periodo' => $idPeriodo,
+            'programa' => ProgramaEstudio::find($idPrograma)?->nombre,
+            'modelo' => 'determinista-dsi',
+            'resultado_json' => ['detalles' => $detalles],
+            'estado' => 'BORRADOR',
+            'metadata_json' => [
+                'filtro' => ['id_programa' => $idPrograma, 'id_periodo' => $idPeriodo, 'semestre' => $semestre],
+                'es_alternativa' => true,
+                'bloques_actuales_a_reemplazar' => $bloquesActuales,
+                'seed' => $seed,
+            ],
+        ]);
+
+        return $this->respuestaSemestre($semestre, true, 'BORRADOR', "Nueva propuesta generada como borrador ({$bloquesActuales} bloque(s) actuales serian reemplazados). El horario actual no fue modificado; apruebe para reemplazarlo.", [
+            'id_generacion' => $generacion->id_generacion,
+            'resumen' => $resumenNuevo,
+            'horarios' => $this->detallesConNombres($detalles),
+        ]);
+    }
+
+    /** Enriquece detalles aun no persistidos (id_curso/id_docente crudos) con nombres para la vista previa del BORRADOR. */
+    private function detallesConNombres(array $detalles): array
+    {
+        $cursos = Curso::whereIn('id_curso', array_unique(array_column($detalles, 'id_curso')))->get()->keyBy('id_curso');
+        $docentes = Docente::with('usuario')->whereIn('id_docente', array_unique(array_column($detalles, 'id_docente')))->get()->keyBy('id_docente');
+
+        return array_map(function (array $d) use ($cursos, $docentes) {
+            $curso = $cursos->get($d['id_curso']);
+            $docente = $docentes->get($d['id_docente']);
+
+            return [
+                'id_curso' => $d['id_curso'],
+                'id_docente' => $d['id_docente'],
+                'curso' => $curso ? ['nombre_curso' => $curso->nombre_curso] : null,
+                'docente' => $docente ? ['usuario' => ['nombres' => $docente->usuario?->nombres, 'apellidos' => $docente->usuario?->apellidos]] : null,
+                'dia' => $d['dia'],
+                'hora_inicio' => $d['hora_inicio'],
+                'hora_fin' => $d['hora_fin'],
+                'aula' => $d['aula'] ?? null,
+            ];
+        }, $detalles);
     }
 
     /**
@@ -354,7 +494,7 @@ class HorarioAiGeneratorService
     public function regenerarSemestreDsi(int $idPrograma, int $idPeriodo, string $semestre): array
     {
         if (! in_array($semestre, self::SEMESTRES_GENERABLES_DSI, true)) {
-            return $this->respuestaSemestre($semestre, false, 'SEMESTRE_NO_PERMITIDO', "El semestre {$semestre} no admite este flujo (protegido o fuera de alcance).");
+            return $this->respuestaSemestre($semestre, false, 'SEMESTRE_NO_PERMITIDO', "El semestre {$semestre} no es valido para este flujo.");
         }
 
         $tieneManual = Horario::where('id_programa', $idPrograma)
@@ -375,7 +515,8 @@ class HorarioAiGeneratorService
     /** Los bloques ya guardados en `horarios` para el semestre (se usa para adjuntarlos a la respuesta JSON). */
     private function horariosPersistidos(int $idPrograma, int $idPeriodo, string $semestre): array
     {
-        return Horario::where('id_programa', $idPrograma)
+        return Horario::with(['curso', 'docente.usuario'])
+            ->where('id_programa', $idPrograma)
             ->where('id_periodo', $idPeriodo)
             ->where('semestre', $semestre)
             ->orderBy('dia')
@@ -384,7 +525,7 @@ class HorarioAiGeneratorService
             ->toArray();
     }
 
-    /** Fase 3: corre generarSemestreDsi() en orden para II, IV, V y VI. Nunca incluye I ni III. */
+    /** Fase 3: corre generarSemestreDsi() en orden para los 6 semestres (o el subconjunto indicado). */
     public function generarSemestresPendientesDsi(int $idPrograma, int $idPeriodo, array $semestres = self::SEMESTRES_GENERABLES_DSI): array
     {
         $resultados = [];
@@ -432,12 +573,15 @@ class HorarioAiGeneratorService
      * capacidad exacta de 30, sin margen). Cada slot se usa una sola vez
      * (regla 15: no dos cursos del mismo semestre en la misma celda).
      *
+     * @param ?int $excluirPrograma Si se pasa (junto con $semestre), la ocupacion excluye los
+     *             bloques reales de ESE programa+semestre: se usa para generar una propuesta
+     *             alternativa que reemplazara ese mismo semestre.
      * @return array{0: array<int,array<string,mixed>>, 1: array<int,array<string,mixed>>} [detalles, pendientes]
      */
-    private function ubicarBloques(BaseCollection $cursos, EloquentCollection $aulas, array $slots, int $idPeriodo, string $semestre): array
+    private function ubicarBloques(BaseCollection $cursos, EloquentCollection $aulas, array $slots, int $idPeriodo, string $semestre, ?int $excluirPrograma = null): array
     {
-        $ocupacionDocente = $this->ocupacionExistente($idPeriodo, 'id_docente');
-        $ocupacionAula = $this->ocupacionExistente($idPeriodo, 'id_aula');
+        $ocupacionDocente = $this->ocupacionExistente($idPeriodo, 'id_docente', $excluirPrograma, $semestre);
+        $ocupacionAula = $this->ocupacionExistente($idPeriodo, 'id_aula', $excluirPrograma, $semestre);
 
         $aulasPorCodigo = $aulas->keyBy('codigo');
         $laboratorios = $aulas->whereIn('tipo', ['LABORATORIO', 'TALLER'])->pluck('codigo')->values()->all();
@@ -674,8 +818,15 @@ class HorarioAiGeneratorService
         return null;
     }
 
-    /** Los 30 slots semanales (Lunes-Viernes x 6 bloques, receso ya excluido por el catalogo). */
-    private function slotsSemana(): array
+    /**
+     * Los 30 slots semanales (Lunes-Viernes x 6 bloques, receso ya excluido
+     * por el catalogo). Con $seed, se baraja el orden de iteracion (Fase 6)
+     * para que una "nueva propuesta" del mismo semestre no repita
+     * exactamente la misma distribucion; el algoritmo sigue siendo
+     * deterministico para un mismo seed (reproducible) y respeta las mismas
+     * reglas duras sin importar el orden.
+     */
+    private function slotsSemana(?int $seed = null): array
     {
         $bloques = array_values(array_filter(
             $this->catalogo->obtener()['bloques_horario'],
@@ -689,17 +840,31 @@ class HorarioAiGeneratorService
             }
         }
 
+        if ($seed !== null) {
+            $slots = (new \Random\Randomizer(new \Random\Engine\Mt19937($seed)))->shuffleArray($slots);
+        }
+
         return $slots;
     }
 
-    /** Ocupacion real ya guardada en `horarios` para el periodo, indexada por "dia|hora_inicio". */
-    private function ocupacionExistente(int $idPeriodo, string $columna): array
+    /**
+     * Ocupacion real ya guardada en `horarios` para el periodo, indexada por
+     * "dia|hora_inicio". Con $excluirPrograma + $excluirSemestre, ignora los
+     * bloques de ese programa+semestre exacto (Fase 6: son los que una
+     * propuesta alternativa reemplazaria si se aprueba, asi que no deben
+     * bloquear al docente/aula contra si mismos).
+     */
+    private function ocupacionExistente(int $idPeriodo, string $columna, ?int $excluirPrograma = null, ?string $excluirSemestre = null): array
     {
         $ocupacion = [];
 
         DB::table('horarios')
             ->where('id_periodo', $idPeriodo)
             ->whereNotNull($columna)
+            ->when(
+                $excluirPrograma !== null && $excluirSemestre !== null,
+                fn ($q) => $q->where(fn ($qq) => $qq->where('id_programa', '!=', $excluirPrograma)->orWhere('semestre', '!=', $excluirSemestre)),
+            )
             ->get(['dia', 'hora_inicio', $columna])
             ->each(function ($fila) use (&$ocupacion, $columna) {
                 $clave = $fila->dia.'|'.substr((string) $fila->hora_inicio, 0, 5);

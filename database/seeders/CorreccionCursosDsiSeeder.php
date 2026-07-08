@@ -8,13 +8,38 @@ use Illuminate\Support\Facades\DB;
 /**
  * Correccion de datos del programa DSI (Fase 1 y Fase 2 del diagnostico de
  * horarios): archiva cursos duplicados/obsoletos y asigna los docentes
- * faltantes del semestre VI. Idempotente: cada paso solo actua si el curso
- * sigue en el estado que motivo la correccion, por lo que reasignaciones
- * manuales posteriores no se sobrescriben en una segunda ejecucion.
+ * faltantes del semestre VI. Resuelve todo por nombre_curso/semestre/
+ * codigo_docente (nunca por id_curso/id_docente fijo) para funcionar igual
+ * en cualquier base de datos, sin importar el orden de auto_increment con
+ * que haya quedado cada instalacion. Idempotente: cada paso solo actua si
+ * el curso sigue en el estado que motivo la correccion.
  */
 class CorreccionCursosDsiSeeder extends Seeder
 {
     private const ID_PROGRAMA_DSI = 1;
+
+    /** [nombre_curso, codigo_docente] del semestre VI. */
+    private const ASIGNACIONES_VI = [
+        ['Experiencias formativas en situaciones reales de trabajo (ESRT)', 'DOC013'], // Emiliano Mendoza
+        ['Gestión de redes informáticas', 'DOC013'], // Emiliano Mendoza
+        ['Auditoría de software', 'DOC013'], // Emiliano Mendoza
+        ['Solución de problemas', 'DOC013'], // Emiliano Mendoza
+        ['Gestión de servidores', 'DOC014'], // Vladimir Florez
+        ['Soporte de auditoría de TI', 'DOC014'], // Vladimir Florez
+        ['Inteligencia artificial', 'DOC014'], // Vladimir Florez
+        ['Innovación tecnológica', 'DOC014'], // Vladimir Florez
+    ];
+
+    /** Nombres de los cursos legado de VI con id_programa NULL, ya reemplazados por sus pares en id_programa = 1. */
+    private const NOMBRES_CURSOS_VI_LEGACY = [
+        'Gestión de servidores',
+        'Gestión de redes informáticas',
+        'Soporte de auditoría de TI',
+        'Auditoría de software',
+        'Inteligencia artificial',
+        'Solución de problemas',
+        'Innovación tecnológica',
+    ];
 
     public function run(): void
     {
@@ -28,33 +53,48 @@ class CorreccionCursosDsiSeeder extends Seeder
 
     /**
      * ItinerarioProgramaSeeder::sincronizarCursos() vincula unidades por
-     * nombre_curso exacto. El curso 11 ("Interpretacion y produccion
-     * textos", sin "de") no coincide con el nombre oficial del itinerario
-     * ("... de textos"), por eso cada ItinerarioDsiSeeder crea el duplicado
-     * 38 de nuevo. Renombrar el 11 al nombre oficial evita que reaparezca.
+     * nombre_curso exacto (salvo tildes, la collation es insensible a
+     * ellas). El nombre legado "Interpretacion y produccion textos" (sin
+     * "de") no coincide con el oficial ("... de textos"): si existe, se
+     * renombra para unificarlo con el curso real y que el duplicado no
+     * vuelva a crearse en un futuro re-seed del itinerario.
      */
     private function renombrarCursoOficial(): void
     {
         DB::table('cursos')
-            ->where('id_curso', 11)
             ->where('id_programa', self::ID_PROGRAMA_DSI)
+            ->where('semestre', 'II')
+            ->where('nombre_curso', 'Interpretación y producción textos')
             ->update(['nombre_curso' => 'Interpretación y producción de textos']);
     }
 
     /**
-     * Curso 38: duplicado generado por el itinerario, sin docente, sin
-     * matriculas ni horarios (verificado). El curso 11 es el real: tiene
-     * matricula activa y docente. Se archiva con nombre distinto para que
-     * el proximo ItinerarioDsiSeeder no lo reconozca por nombre y lo
-     * reactive via su logica de "restore si esta trashed".
+     * Si tras renombrar quedan dos (o mas) cursos activos con el mismo
+     * nombre oficial en semestre II, conserva el que tiene docente
+     * asignado (el real, con matricula) y archiva el resto con nombre
+     * distinto para que no vuelvan a coincidir con el itinerario oficial.
      */
     private function archivarDuplicadoInterpretacionTextos(): void
     {
-        DB::table('cursos')
-            ->where('id_curso', 38)
+        $duplicados = DB::table('cursos')
             ->where('id_programa', self::ID_PROGRAMA_DSI)
-            ->whereNull('id_docente')
+            ->where('semestre', 'II')
+            ->where('nombre_curso', 'Interpretación y producción de textos')
             ->where('estado', '!=', 'ARCHIVADO')
+            ->orderBy('id_curso')
+            ->get(['id_curso', 'id_docente']);
+
+        if ($duplicados->count() < 2) {
+            return;
+        }
+
+        $aConservar = $duplicados->first(fn ($c) => $c->id_docente !== null) ?? $duplicados->first();
+
+        DB::table('cursos')
+            ->where('id_programa', self::ID_PROGRAMA_DSI)
+            ->where('semestre', 'II')
+            ->where('nombre_curso', 'Interpretación y producción de textos')
+            ->where('id_curso', '!=', $aConservar->id_curso)
             ->update([
                 'nombre_curso' => 'Interpretación y producción de textos (duplicado archivado)',
                 'estado' => 'ARCHIVADO',
@@ -63,15 +103,16 @@ class CorreccionCursosDsiSeeder extends Seeder
     }
 
     /**
-     * Cursos 29-35: version antigua sin id_programa del semestre VI, ya
-     * reemplazada por los cursos 40-46 (id_programa = 1). Verificado sin
-     * referencias en horarios, matricula_cursos ni portafolio_docente.
+     * Cursos de VI con id_programa NULL: version antigua ya reemplazada
+     * por sus pares en id_programa = 1. Verificado sin referencias en
+     * horarios, matricula_cursos ni portafolio_docente.
      */
     private function archivarCursosSinProgramaVI(): void
     {
         DB::table('cursos')
-            ->whereIn('id_curso', [29, 30, 31, 32, 33, 34, 35])
+            ->whereIn('nombre_curso', self::NOMBRES_CURSOS_VI_LEGACY)
             ->whereNull('id_programa')
+            ->where('semestre', 'VI')
             ->where('estado', '!=', 'ARCHIVADO')
             ->update([
                 'estado' => 'ARCHIVADO',
@@ -81,28 +122,25 @@ class CorreccionCursosDsiSeeder extends Seeder
 
     /**
      * Reparto balanceado entre los dos docentes con 0 cursos previos y
-     * especialidad Desarrollo de Software (Emiliano Mendoza id 11, Vladimir
-     * Florez id 12), sin superar 20 bloques semanales para ninguno
-     * (quedan en 12 y 11 respectivamente). Hernan Palomino (id 3) se
-     * excluye a proposito: ya esta en el limite de 20 bloques.
+     * especialidad Desarrollo de Software (Emiliano Mendoza, Vladimir
+     * Florez), sin superar 20 bloques semanales para ninguno. Hernan
+     * Palomino se excluye a proposito: ya esta en el limite de 20 bloques.
      */
     private function asignarDocentesSemestreVI(): void
     {
-        $asignaciones = [
-            39 => 11, // ESRT -> Emiliano Mendoza
-            41 => 11, // Gestion de redes informaticas -> Emiliano Mendoza
-            43 => 11, // Auditoria de software -> Emiliano Mendoza
-            45 => 11, // Solucion de problemas -> Emiliano Mendoza
-            40 => 12, // Gestion de servidores -> Vladimir Florez
-            42 => 12, // Soporte de auditoria de TI -> Vladimir Florez
-            44 => 12, // Inteligencia artificial -> Vladimir Florez
-            46 => 12, // Innovacion tecnologica -> Vladimir Florez
-        ];
+        $docentesPorCodigo = DB::table('docentes')->pluck('id_docente', 'codigo_docente');
 
-        foreach ($asignaciones as $idCurso => $idDocente) {
+        foreach (self::ASIGNACIONES_VI as [$nombreCurso, $codigoDocente]) {
+            $idDocente = $docentesPorCodigo[$codigoDocente] ?? null;
+
+            if (! $idDocente) {
+                continue;
+            }
+
             DB::table('cursos')
-                ->where('id_curso', $idCurso)
                 ->where('id_programa', self::ID_PROGRAMA_DSI)
+                ->where('semestre', 'VI')
+                ->where('nombre_curso', $nombreCurso)
                 ->whereNull('id_docente')
                 ->update(['id_docente' => $idDocente]);
         }

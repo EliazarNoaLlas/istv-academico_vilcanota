@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Horarios\ClearHorarioRequest;
 use App\Http\Requests\Horarios\DetectHorarioConflictsRequest;
 use App\Http\Requests\Horarios\GenerateHorarioIaRequest;
+use App\Http\Requests\Horarios\GenerateSemestreDsiRequest;
+use App\Http\Requests\Horarios\GenerateSemestresPendientesDsiRequest;
 use App\Http\Requests\Horarios\StoreHorarioRequest;
 use App\Models\Docente;
 use App\Models\HorarioIaGenerado;
@@ -23,14 +25,16 @@ use Illuminate\View\View;
 class CoordinadorHorarioController extends Controller
 {
     public function __construct(
-        private HorarioQueryService $consultas,
-        private HorarioConflictService $conflictos,
-        private HorarioValidationService $reglas,
+        private HorarioQueryService       $consultas,
+        private HorarioConflictService    $conflictos,
+        private HorarioValidationService  $reglas,
         private HorarioPersistenceService $persistencia,
-        private HorarioCatalogService $catalogos,
-        private HorarioColorService $colores,
+        private HorarioCatalogService     $catalogos,
+        private HorarioColorService       $colores,
         private HorarioAiGeneratorService $generadorIa,
-    ) {}
+    )
+    {
+    }
 
     public function page(): View
     {
@@ -44,14 +48,14 @@ class CoordinadorHorarioController extends Controller
         $catalogos = $this->catalogos->obtener();
         $catalogos['programas'] = array_values(array_filter(
             $catalogos['programas']->all(),
-            fn ($programa) => $programa->id_programa === auth()->user()->id_programa,
+            fn($programa) => $programa->id_programa === auth()->user()->id_programa,
         ));
 
         // Si el coordinador tambien dicta clases, debe poder asignarse a si
         // mismo un curso en el horario aunque su docente_programa aun no
         // exista (recien se crea al guardar un curso u horario a su nombre).
         $miDocente = auth()->user()->miDocentePropio();
-        if ($miDocente && ! $catalogos['docentes']->contains('id_docente', $miDocente->id_docente)) {
+        if ($miDocente && !$catalogos['docentes']->contains('id_docente', $miDocente->id_docente)) {
             $catalogos['docentes']->push($miDocente->load('usuario'));
         }
 
@@ -61,10 +65,10 @@ class CoordinadorHorarioController extends Controller
     public function index(Request $request): JsonResponse
     {
         $horarios = $this->consultas->listar(
-            $request->query('id_docente') ? (int) $request->query('id_docente') : null,
-            $request->query('id_curso') ? (int) $request->query('id_curso') : null,
+            $request->query('id_docente') ? (int)$request->query('id_docente') : null,
+            $request->query('id_curso') ? (int)$request->query('id_curso') : null,
             $request->query('semestre'),
-            $request->query('id_programa') ? (int) $request->query('id_programa') : null,
+            $request->query('id_programa') ? (int)$request->query('id_programa') : null,
         );
 
         $horarios->each(function ($horario) {
@@ -194,8 +198,61 @@ class CoordinadorHorarioController extends Controller
         $generacion = HorarioIaGenerado::find($idGeneracion);
         $idProgramaGeneracion = $generacion?->metadata_json['filtro']['id_programa'] ?? null;
 
-        if (! $generacion || (int) $idProgramaGeneracion !== (int) auth()->user()->id_programa) {
+        if (!$generacion || (int)$idProgramaGeneracion !== (int)auth()->user()->id_programa) {
             abort(404);
         }
+    }
+
+    /** Fase 3: genera de forma determinista (sin LLM) el horario de un solo semestre DSI. Nunca toma id_programa del cliente: solo el propio. */
+    public function generateSemesterDsi(GenerateSemestreDsiRequest $request): JsonResponse
+    {
+        return response()->json($this->generadorIa->generarSemestreDsi(
+            auth()->user()->id_programa,
+            $request->integer('id_periodo'),
+            (string)$request->validated('semestre'),
+            (string)($request->validated('modo') ?? 'normal'),
+            $request->integer('seed') ?: null,
+        ));
+    }
+
+    /** Fase 3: genera en secuencia II, IV, V y VI del programa propio. No toca I ni III. */
+    public function generatePendingSemestersDsi(GenerateSemestresPendientesDsiRequest $request): JsonResponse
+    {
+        return response()->json($this->generadorIa->generarSemestresPendientesDsi(
+            auth()->user()->id_programa,
+            $request->integer('id_periodo'),
+        ));
+    }
+
+    /** Fase 4: regenera un semestre limpiando solo lo generado por IA; nunca toca bloques fuente MANUAL. */
+    public function regenerateSemesterDsi(GenerateSemestreDsiRequest $request): JsonResponse
+    {
+        return response()->json($this->generadorIa->regenerarSemestreDsi(
+            auth()->user()->id_programa,
+            $request->integer('id_periodo'),
+            (string)$request->validated('semestre'),
+        ));
+    }
+
+    /** Fase 3.2: repara dirigidamente el BORRADOR pendiente de un semestre (no regenera desde cero). */
+    public function repairSemesterDsi(GenerateSemestreDsiRequest $request): JsonResponse
+    {
+        return response()->json($this->generadorIa->repararSemestreDsi(
+            auth()->user()->id_programa,
+            $request->integer('id_periodo'),
+            (string)$request->validated('semestre'),
+        ));
+    }
+
+    /** Fase 4: estado de solo lectura por semestre (I-VI) del programa propio. */
+    public function estadoSemestresDsi(GenerateSemestresPendientesDsiRequest $request): JsonResponse
+    {
+        return response()->json([
+            'ok' => true,
+            'semestres' => $this->consultas->resumenPorSemestre(
+                auth()->user()->id_programa,
+                $request->integer('id_periodo'),
+            ),
+        ]);
     }
 }

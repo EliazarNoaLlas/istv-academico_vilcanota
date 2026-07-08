@@ -16,7 +16,9 @@ class GenerateSemestreDsiRequest extends FormRequest
         return [
             'id_programa' => ['required', 'integer', 'exists:programas_estudio,id_programa'],
             'id_periodo' => ['required', 'integer', 'exists:periodos_academicos,id_periodo'],
-            'semestre' => ['required', 'string', 'in:II,IV,V,VI'],
+            'semestre' => ['required', 'string', 'in:I,II,III,IV,V,VI'],
+            'modo' => ['nullable', 'string', 'in:normal,nueva_propuesta'],
+            'seed' => ['nullable', 'integer'],
         ];
     }
 }

@@ -27,10 +27,13 @@ class DatabaseSeeder extends Seeder
             ItinerarioContSeeder::class,
             ItinerarioPaSeeder::class,
             ItinerarioEnfSeeder::class,
+            DocentesDsiSeeder::class,
             CorreccionCursosDsiSeeder::class,
+            HorariosBaseDsiSeeder::class,
             BackfillHorariosDsiSeeder::class,
             NormalizarAulasHorariosDsiSeeder::class,
             ReasignarGestionServiciosTiSeeder::class,
+            GenerarHorariosDsiSeeder::class,
             UsuarioBaseSeeder::class,
         ]);
     }

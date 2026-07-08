@@ -190,6 +190,11 @@ Route::middleware(['auth', 'role:coordinador', 'coordinador.programa'])->prefix(
     Route::post('/horarios/ia/{idGeneracion}/descartar', [CoordinadorHorarioController::class, 'descartarGeneracionIa']);
     Route::post('/horarios/ia/{idGeneracion}/reparar', [CoordinadorHorarioController::class, 'repararGeneracionIa']);
     Route::get('/horarios/ia/{idGeneracion}/estado', [CoordinadorHorarioController::class, 'estadoGeneracionIa']);
+    Route::post('/horarios/dsi/generar-semestre', [CoordinadorHorarioController::class, 'generateSemesterDsi']);
+    Route::post('/horarios/dsi/generar-pendientes', [CoordinadorHorarioController::class, 'generatePendingSemestersDsi']);
+    Route::post('/horarios/dsi/regenerar-semestre', [CoordinadorHorarioController::class, 'regenerateSemesterDsi']);
+    Route::post('/horarios/dsi/reparar-semestre', [CoordinadorHorarioController::class, 'repairSemesterDsi']);
+    Route::get('/horarios/dsi/estado', [CoordinadorHorarioController::class, 'estadoSemestresDsi']);
     Route::get('/portafolios', [CoordinadorPortafolioController::class, 'index']);
     Route::get('/portafolios/notas', [CoordinadorPortafolioController::class, 'estudiantesNotas']);
     Route::post('/portafolios/notas', [CoordinadorPortafolioController::class, 'guardarNotasLote']);
@@ -246,6 +251,7 @@ Route::middleware(['auth', 'role:director'])->prefix('api/director')->group(func
     Route::post('/horarios/dsi/generar-semestre', [DirectorHorarioController::class, 'generateSemesterDsi']);
     Route::post('/horarios/dsi/generar-pendientes', [DirectorHorarioController::class, 'generatePendingSemestersDsi']);
     Route::post('/horarios/dsi/regenerar-semestre', [DirectorHorarioController::class, 'regenerateSemesterDsi']);
+    Route::post('/horarios/dsi/reparar-semestre', [DirectorHorarioController::class, 'repairSemesterDsi']);
     Route::get('/horarios/dsi/estado', [DirectorHorarioController::class, 'estadoSemestresDsi']);
 
     Route::get('/estudiantes', [DirectorEstudianteController::class, 'index']);

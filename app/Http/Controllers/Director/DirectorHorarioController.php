@@ -158,6 +158,8 @@ class DirectorHorarioController extends Controller
             $request->integer('id_programa'),
             $request->integer('id_periodo'),
             (string) $request->validated('semestre'),
+            (string) ($request->validated('modo') ?? 'normal'),
+            $request->integer('seed') ?: null,
         ));
     }
 
@@ -190,6 +192,16 @@ class DirectorHorarioController extends Controller
     public function regenerateSemesterDsi(GenerateSemestreDsiRequest $request): JsonResponse
     {
         return response()->json($this->generadorIa->regenerarSemestreDsi(
+            $request->integer('id_programa'),
+            $request->integer('id_periodo'),
+            (string) $request->validated('semestre'),
+        ));
+    }
+
+    /** Fase 3.2: repara dirigidamente el BORRADOR pendiente de un semestre (no regenera desde cero). */
+    public function repairSemesterDsi(GenerateSemestreDsiRequest $request): JsonResponse
+    {
+        return response()->json($this->generadorIa->repararSemestreDsi(
             $request->integer('id_programa'),
             $request->integer('id_periodo'),
             (string) $request->validated('semestre'),
