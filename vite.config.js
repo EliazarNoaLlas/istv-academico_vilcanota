@@ -40,6 +40,7 @@ export default defineConfig({
                 'resources/js/director/reportes.js',
                 'resources/js/director/itinerarios.js',
                 'resources/js/jua/dashboard.js',
+                'resources/js/jua/calendario.js',
             ],
             refresh: true,
         }),

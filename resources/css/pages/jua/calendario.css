@@ -1,0 +1,314 @@
+/* Especifico de jua/calendario. Prefijo obligatorio: .jua-cal-* */
+.jua-cal-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.jua-cal-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.jua-cal-header-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-sm);
+    background: #7c3aed;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.jua-cal-header-text {
+    flex: 1;
+}
+
+.jua-cal-header-text h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--navy);
+}
+
+.jua-cal-header-text p {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.jua-cal-btn-nuevo {
+    background: #7c3aed;
+    border-color: #7c3aed;
+}
+
+.jua-cal-btn-nuevo:hover {
+    background: #6d28d9;
+}
+
+.jua-cal-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.jua-cal-kpi {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+}
+
+.jua-cal-kpi-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    color: #fff;
+}
+
+.jua-cal-kpi-icon.navy { background: var(--navy); }
+.jua-cal-kpi-icon.blue { background: #2563eb; }
+.jua-cal-kpi-icon.gold { background: var(--gold); }
+.jua-cal-kpi-icon.red { background: var(--red-alert); }
+
+.jua-cal-kpi strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--navy);
+    line-height: 1.1;
+}
+
+.jua-cal-kpi span {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.jua-cal-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 18px;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    .jua-cal-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+.jua-cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.jua-cal-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.jua-cal-nav-left h3 {
+    font-family: var(--font-display);
+    font-size: 17px;
+    color: var(--navy);
+    text-transform: capitalize;
+}
+
+.jua-cal-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.jua-cal-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: none;
+    background: var(--navy);
+    color: rgba(255, 255, 255, .45);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+}
+
+.jua-cal-chip.active {
+    color: #fff;
+}
+
+.jua-cal-chip:not(.active) {
+    opacity: .55;
+}
+
+.jua-cal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.jua-cal-dot.blue, .jua-cal-badge.blue, .jua-cal-tag.blue, .jua-cal-proximo-fecha.blue { background: #2563eb; }
+.jua-cal-dot.red, .jua-cal-badge.red, .jua-cal-tag.red, .jua-cal-proximo-fecha.red { background: var(--red-alert); }
+.jua-cal-dot.gold, .jua-cal-badge.gold, .jua-cal-tag.gold, .jua-cal-proximo-fecha.gold { background: var(--gold); }
+.jua-cal-dot.teal, .jua-cal-badge.teal, .jua-cal-tag.teal, .jua-cal-proximo-fecha.teal { background: var(--teal); }
+.jua-cal-dot.purple, .jua-cal-badge.purple, .jua-cal-tag.purple, .jua-cal-proximo-fecha.purple { background: #7c3aed; }
+
+.jua-cal-grid-dias {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.jua-cal-grid-dias div {
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: var(--text-muted);
+    padding-bottom: 6px;
+}
+
+.jua-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.jua-cal-celda {
+    min-height: 84px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px;
+    cursor: pointer;
+    transition: border-color .15s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.jua-cal-celda:hover {
+    border-color: var(--teal);
+}
+
+.jua-cal-celda.fuera {
+    opacity: .4;
+}
+
+.jua-cal-celda.hoy {
+    border: 2px solid var(--navy);
+}
+
+.jua-cal-celda-num {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.jua-cal-celda-eventos {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    overflow: hidden;
+}
+
+.jua-cal-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.jua-cal-sidebar-hint {
+    padding: 0 18px 12px;
+    margin-top: -6px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.jua-cal-proximo-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 18px;
+    border: none;
+    background: none;
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+    text-align: left;
+}
+
+.jua-cal-proximo-item:hover {
+    background: var(--surface);
+}
+
+.jua-cal-proximo-fecha {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.jua-cal-proximo-fecha strong {
+    font-size: 13px;
+    line-height: 1.1;
+}
+
+.jua-cal-proximo-fecha span {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+
+.jua-cal-proximo-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.jua-cal-proximo-info strong {
+    display: block;
+    font-size: 12.5px;
+    color: var(--navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.jua-cal-tag {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+}

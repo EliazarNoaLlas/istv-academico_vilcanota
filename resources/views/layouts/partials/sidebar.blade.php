@@ -12,7 +12,7 @@
     <div class="sidebar-header">
         <div class="sidebar-brand">
             <div class="brand-icon">
-                <img src="{{ asset('images/logo.jpg') }}" alt="Logo ISTV" class="brand-logo">
+                <img src="{{ asset('images/logo-transparente.png') }}" alt="Logo ISTV" class="brand-logo">
             </div>
             <div class="brand-text">
                 <h2>ISTV Sistema</h2>
@@ -138,12 +138,6 @@
             </a>
             <a href="{{ route('jua.unidades.index') }}" class="nav-item {{ request()->routeIs('jua.unidades.*') ? 'active' : '' }}">
                 <i class="bi bi-journal-text ni"></i> Unidades Didácticas
-            </a>
-            <a href="{{ route('jua.mallas.index') }}" class="nav-item {{ request()->routeIs('jua.mallas.*') ? 'active' : '' }}">
-                <i class="bi bi-diagram-3 ni"></i> Mallas Curriculares
-            </a>
-            <a href="{{ route('jua.creditos.index') }}" class="nav-item {{ request()->routeIs('jua.creditos.*') ? 'active' : '' }}">
-                <i class="bi bi-clock-history ni"></i> Créditos y Horas
             </a>
             <a href="{{ route('jua.calendario.index') }}" class="nav-item {{ request()->routeIs('jua.calendario.*') ? 'active' : '' }}">
                 <i class="bi bi-calendar3 ni"></i> Calendario Académico

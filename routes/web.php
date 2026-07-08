@@ -23,6 +23,7 @@ use App\Http\Controllers\Director\DirectorPortafolioController;
 use App\Http\Controllers\Director\DirectorProgramaController;
 use App\Http\Controllers\Director\DirectorReporteController;
 use App\Http\Controllers\Director\DirectorUsuarioController;
+use App\Http\Controllers\Jua\JuaCalendarioController;
 use App\Http\Controllers\Jua\JuaDashboardController;
 use App\Http\Controllers\Jua\JuaModuloController;
 use App\Http\Controllers\Jua\JuaProgramaController;
@@ -125,11 +126,14 @@ Route::middleware(['auth', 'role:jua'])->prefix('jua')->name('jua.')->group(func
     Route::get('/unidades-didacticas', [JuaUnidadDidacticaController::class, 'index'])->name('unidades.index');
     Route::get('/usuarios', [JuaUsuarioController::class, 'index'])->name('usuarios.index');
 
+    Route::get('/calendario-academico', [JuaCalendarioController::class, 'page'])->name('calendario.index');
+    Route::get('/calendario-academico/eventos', [JuaCalendarioController::class, 'eventos'])->name('calendario.eventos');
+    Route::post('/calendario-academico/eventos', [JuaCalendarioController::class, 'store'])->name('calendario.eventos.store');
+    Route::put('/calendario-academico/eventos/{evento}', [JuaCalendarioController::class, 'update'])->name('calendario.eventos.update');
+    Route::delete('/calendario-academico/eventos/{evento}', [JuaCalendarioController::class, 'destroy'])->name('calendario.eventos.destroy');
+
     // Modulos aun no construidos: una sola vista "en construccion" reutilizable,
     // para que el menu completo ya navegue sin enlaces rotos ni 404 crudos.
-    Route::get('/mallas-curriculares', [JuaModuloController::class, 'stub'])->name('mallas.index');
-    Route::get('/creditos-horas', [JuaModuloController::class, 'stub'])->name('creditos.index');
-    Route::get('/calendario-academico', [JuaModuloController::class, 'stub'])->name('calendario.index');
     Route::get('/consolidados', [JuaModuloController::class, 'stub'])->name('consolidados.index');
     Route::get('/reportes', [JuaModuloController::class, 'stub'])->name('reportes.index');
     Route::get('/indicadores', [JuaModuloController::class, 'stub'])->name('indicadores.index');
