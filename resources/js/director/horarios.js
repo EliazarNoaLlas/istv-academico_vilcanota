@@ -184,8 +184,115 @@ function cargarHorario() {
             renderKpis(horarioActual, data.docentes_activos);
             if (!hayConflictosDeDatos) ocultarConflictos();
             document.getElementById('dir-horarios-guardar-hint')?.classList.remove('show');
+            evaluarEstadoSemestre();
         })
         .catch((error) => console.error(error));
+}
+
+/**
+ * Fase 5: decide que mostrar segun el estado real del semestre seleccionado
+ * (programa + periodo + semestre): tabla normal, panel "sin horario aun" con
+ * boton para generar, o panel "cursos sin docente" con la lista y un enlace
+ * a asignar docentes. Sin programa/semestre especifico no hay contexto para
+ * evaluar por semestre, asi que se mantiene el comportamiento historico
+ * (tabla agregada tal cual).
+ */
+function evaluarEstadoSemestre() {
+    const filtros = filtrosActuales();
+    const idPeriodo = idPeriodoSeleccionado();
+    const wrapper = document.getElementById('dir-horarios-schedule-wrapper');
+    const panelVacio = document.getElementById('dir-horarios-estado-vacio');
+    const panelSinDocente = document.getElementById('dir-horarios-estado-sin-docente');
+
+    if (!wrapper || !panelVacio || !panelSinDocente) return;
+
+    if (!filtros.id_programa || !filtros.semestre || !idPeriodo) {
+        wrapper.style.display = '';
+        panelVacio.style.display = 'none';
+        panelSinDocente.style.display = 'none';
+
+        return;
+    }
+
+    fetch(`/api/director/horarios/dsi/estado?id_programa=${filtros.id_programa}&id_periodo=${idPeriodo}`, { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            const info = (data.semestres ?? []).find((s) => s.semestre === filtros.semestre);
+
+            wrapper.style.display = '';
+            panelVacio.style.display = 'none';
+            panelSinDocente.style.display = 'none';
+
+            if (!info || info.cursos === 0 || info.bloques_generados > 0) return;
+
+            if (info.cursos_sin_docente > 0) {
+                wrapper.style.display = 'none';
+                cargarCursosSinDocente(filtros.id_programa, filtros.semestre);
+                panelSinDocente.style.display = '';
+
+                return;
+            }
+
+            wrapper.style.display = 'none';
+            document.getElementById('dir-horarios-estado-vacio-texto').textContent =
+                `El semestre ${filtros.semestre} tiene ${info.cursos} curso(s) activos y ${info.bloques_requeridos} bloque(s) por asignar.`;
+            panelVacio.style.display = '';
+        })
+        .catch((error) => console.error(error));
+}
+
+function cargarCursosSinDocente(idPrograma, semestre) {
+    const lista = document.getElementById('dir-horarios-estado-sin-docente-lista');
+    if (!lista) return;
+    lista.innerHTML = '<li>Cargando…</li>';
+
+    fetch('/api/director/horarios/catalogos', { headers: { Accept: 'application/json' } })
+        .then((res) => res.json())
+        .then((data) => {
+            const cursos = (data.cursos ?? []).filter(
+                (c) => String(c.id_programa) === String(idPrograma) && c.semestre === semestre && !c.id_docente,
+            );
+            lista.innerHTML = cursos.length
+                ? cursos.map((c) => `<li>${c.nombre_curso}</li>`).join('')
+                : '<li>No se pudo determinar el detalle. Actualice la página.</li>';
+        })
+        .catch(() => { lista.innerHTML = '<li>No se pudo cargar el detalle.</li>'; });
+}
+
+function generarHorarioSemestreActual() {
+    const filtros = filtrosActuales();
+    const idPeriodo = idPeriodoSeleccionado();
+    const boton = document.getElementById('dir-horarios-estado-generar');
+    if (!filtros.id_programa || !filtros.semestre || !idPeriodo) return;
+
+    boton.disabled = true;
+    boton.innerHTML = '<i class="bi bi-hourglass-split"></i> Generando…';
+
+    fetch('/api/director/horarios/dsi/generar-semestre', {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify({ id_programa: filtros.id_programa, id_periodo: idPeriodo, semestre: filtros.semestre }),
+    })
+        .then((res) => res.json())
+        .then((data) => {
+            boton.disabled = false;
+            boton.innerHTML = '<i class="bi bi-magic"></i> Generar horario del semestre';
+
+            if (data.ok) {
+                cargarHorario();
+            } else {
+                mostrarConflictos([data.mensaje ?? 'No se pudo generar el horario.']);
+            }
+        })
+        .catch(() => {
+            boton.disabled = false;
+            boton.innerHTML = '<i class="bi bi-magic"></i> Generar horario del semestre';
+            mostrarConflictos(['No se pudo contactar al servidor.']);
+        });
 }
 
 function abrirModal(bloque = null) {
@@ -512,6 +619,7 @@ export function initDirectorHorarios() {
     document.getElementById('dir-horarios-limpiar')?.addEventListener('click', limpiarHorario);
     document.getElementById('dir-horarios-generar-semestre')?.addEventListener('click', () => generarIA('/api/director/horarios/generar-semestre'));
     document.getElementById('dir-horarios-generar-todos')?.addEventListener('click', () => generarIA('/api/director/horarios/generar-todos'));
+    document.getElementById('dir-horarios-estado-generar')?.addEventListener('click', generarHorarioSemestreActual);
 
     document.getElementById('dir-horarios-ia-cerrar')?.addEventListener('click', cerrarModalIa);
     document.getElementById('dir-horarios-ia-aprobar')?.addEventListener('click', aprobarGeneracionIa);

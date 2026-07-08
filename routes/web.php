@@ -86,6 +86,8 @@ Route::middleware(['auth', 'role:director'])->prefix('director')->name('director
     Route::get('/dashboard', [DirectorDashboardController::class, 'index'])->name('dashboard');
     Route::get('/usuarios', [DirectorUsuarioController::class, 'page'])->name('usuarios.index');
     Route::get('/docentes', [DirectorDocenteController::class, 'page'])->name('docentes.index');
+    Route::get('/docentes/export/excel', [DirectorDocenteController::class, 'exportExcel'])->name('docentes.export.excel');
+    Route::get('/docentes/export/pdf', [DirectorDocenteController::class, 'exportPdf'])->name('docentes.export.pdf');
     Route::get('/horarios', [DirectorHorarioController::class, 'page'])->name('horarios.index');
     Route::get('/estudiantes', [DirectorEstudianteController::class, 'page'])->name('estudiantes.index');
     Route::get('/cursos', [DirectorCursoController::class, 'page'])->name('cursos.index');
@@ -221,6 +223,9 @@ Route::middleware(['auth', 'role:director'])->prefix('api/director')->group(func
     Route::patch('/usuarios-solicitudes-password/{solicitud}/rechazar', [DirectorUsuarioController::class, 'rechazarSolicitudPassword']);
 
     Route::get('/docentes', [DirectorDocenteController::class, 'index']);
+    Route::get('/docentes/{docente}/detalle', [DirectorDocenteController::class, 'detalle']);
+    Route::get('/docentes/{docente}/cursos-disponibles', [DirectorDocenteController::class, 'cursosDisponibles']);
+    Route::post('/docentes/{docente}/asignar-cursos', [DirectorDocenteController::class, 'asignarCursos']);
     Route::get('/programas', [DirectorProgramaController::class, 'index']);
 
     Route::get('/horarios', [DirectorHorarioController::class, 'index']);
@@ -234,6 +239,10 @@ Route::middleware(['auth', 'role:director'])->prefix('api/director')->group(func
     Route::post('/horarios/ia/{idGeneracion}/descartar', [DirectorHorarioController::class, 'descartarGeneracionIa']);
     Route::post('/horarios/ia/{idGeneracion}/reparar', [DirectorHorarioController::class, 'repararGeneracionIa']);
     Route::get('/horarios/ia/{idGeneracion}/estado', [DirectorHorarioController::class, 'estadoGeneracionIa']);
+    Route::post('/horarios/dsi/generar-semestre', [DirectorHorarioController::class, 'generateSemesterDsi']);
+    Route::post('/horarios/dsi/generar-pendientes', [DirectorHorarioController::class, 'generatePendingSemestersDsi']);
+    Route::post('/horarios/dsi/regenerar-semestre', [DirectorHorarioController::class, 'regenerateSemesterDsi']);
+    Route::get('/horarios/dsi/estado', [DirectorHorarioController::class, 'estadoSemestresDsi']);
 
     Route::get('/estudiantes', [DirectorEstudianteController::class, 'index']);
     Route::post('/estudiantes', [DirectorEstudianteController::class, 'store']);

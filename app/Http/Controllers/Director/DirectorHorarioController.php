@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Horarios\ClearHorarioRequest;
 use App\Http\Requests\Horarios\DetectHorarioConflictsRequest;
 use App\Http\Requests\Horarios\GenerateHorarioIaRequest;
+use App\Http\Requests\Horarios\GenerateSemestreDsiRequest;
+use App\Http\Requests\Horarios\GenerateSemestresPendientesDsiRequest;
 use App\Http\Requests\Horarios\StoreHorarioRequest;
 use App\Models\Docente;
 use App\Services\Horarios\HorarioAiGeneratorService;
@@ -147,5 +149,50 @@ class DirectorHorarioController extends Controller
     public function estadoGeneracionIa(int $idGeneracion): JsonResponse
     {
         return response()->json($this->generadorIa->estado($idGeneracion));
+    }
+
+    /** Fase 3: genera de forma determinista (sin LLM) el horario de un solo semestre DSI (II, IV, V o VI). */
+    public function generateSemesterDsi(GenerateSemestreDsiRequest $request): JsonResponse
+    {
+        return response()->json($this->generadorIa->generarSemestreDsi(
+            $request->integer('id_programa'),
+            $request->integer('id_periodo'),
+            (string) $request->validated('semestre'),
+        ));
+    }
+
+    /** Fase 3: genera en secuencia II, IV, V y VI. No toca I ni III. */
+    public function generatePendingSemestersDsi(GenerateSemestresPendientesDsiRequest $request): JsonResponse
+    {
+        return response()->json($this->generadorIa->generarSemestresPendientesDsi(
+            $request->integer('id_programa'),
+            $request->integer('id_periodo'),
+        ));
+    }
+
+    /**
+     * Fase 4: estado de solo lectura por semestre (I-VI): cursos, cursos sin
+     * docente, bloques requeridos y generados. No genera nada; lo usa el
+     * frontend para decidir que mensaje/boton mostrar antes de generar.
+     */
+    public function estadoSemestresDsi(GenerateSemestresPendientesDsiRequest $request): JsonResponse
+    {
+        return response()->json([
+            'ok' => true,
+            'semestres' => $this->consultas->resumenPorSemestre(
+                $request->integer('id_programa'),
+                $request->integer('id_periodo'),
+            ),
+        ]);
+    }
+
+    /** Fase 4: regenera un semestre limpiando solo lo generado por IA; nunca toca bloques fuente MANUAL. */
+    public function regenerateSemesterDsi(GenerateSemestreDsiRequest $request): JsonResponse
+    {
+        return response()->json($this->generadorIa->regenerarSemestreDsi(
+            $request->integer('id_programa'),
+            $request->integer('id_periodo'),
+            (string) $request->validated('semestre'),
+        ));
     }
 }

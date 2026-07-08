@@ -100,6 +100,26 @@
     font-size: 12px;
 }
 
+.dir-horarios-cursos-sin-docente {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 420px;
+    width: 100%;
+}
+
+.dir-horarios-cursos-sin-docente li {
+    background: rgba(224, 80, 80, .08);
+    border: 1px solid rgba(224, 80, 80, .25);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
 .coord-horarios-conflict-summary {
     display: flex;
     align-items: center;

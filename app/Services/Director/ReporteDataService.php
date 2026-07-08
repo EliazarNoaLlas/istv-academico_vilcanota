@@ -57,15 +57,29 @@ class ReporteDataService
 
     private function docentesReporte(): array
     {
+        $tipoDocente = ['ESPECIFICO' => 'Específico', 'GENERAL' => 'General'];
+        $estadoCarga = [
+            'SIN_CARGA' => 'Sin carga',
+            'NORMAL' => 'Carga normal',
+            'MODERADA' => 'Carga moderada',
+            'ALTA' => 'Carga alta',
+            'SOBRECARGA' => 'Sobrecarga',
+        ];
+
         $filas = $this->docentes->listarConCarga()->map(fn ($d) => [
             "{$d->usuario->nombres} {$d->usuario->apellidos}",
             $d->especialidad ?? '—',
+            $tipoDocente[$d->tipo_docente] ?? $d->tipo_docente,
             $d->cursos_count,
-            $d->carga_horaria,
-            $d->estado_academico,
+            $d->carga_semanal,
+            $estadoCarga[$d->estado_carga] ?? $d->estado_carga,
         ])->all();
 
-        return ['titulo' => 'Informe de Docentes', 'columnas' => ['Docente', 'Especialidad', 'Cursos', 'Carga horaria', 'Estado'], 'filas' => $filas];
+        return [
+            'titulo' => 'Informe de Docentes',
+            'columnas' => ['Docente', 'Especialidad', 'Tipo docente', 'Cursos asignados', 'Carga semanal (h)', 'Estado'],
+            'filas' => $filas,
+        ];
     }
 
     private function estudiantesReporte(): array

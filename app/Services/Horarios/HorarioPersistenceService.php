@@ -67,6 +67,7 @@ class HorarioPersistenceService
                         'aula' => $aulaTexto,
                         'estado' => $bloque['estado'] ?? 'Confirmado',
                         'fuente' => $bloque['fuente'] ?? 'MANUAL',
+                        'observacion' => $bloque['observacion'] ?? null,
                     ]);
                 }
             });
@@ -80,6 +81,31 @@ class HorarioPersistenceService
     public function eliminarPorFiltro(array $filtros = []): int
     {
         $query = Horario::query();
+
+        if (! empty($filtros['id_docente'])) {
+            $query->where('id_docente', $filtros['id_docente']);
+        }
+
+        if (! empty($filtros['semestre']) || ! empty($filtros['id_programa'])) {
+            $query->whereHas('curso', function ($qc) use ($filtros) {
+                $qc->when(! empty($filtros['semestre']), fn ($qq) => $qq->where('semestre', $filtros['semestre']))
+                    ->when(! empty($filtros['id_programa']), fn ($qq) => $qq->where('id_programa', $filtros['id_programa']));
+            });
+        }
+
+        return $query->delete();
+    }
+
+    /**
+     * Igual que eliminarPorFiltro(), pero SOLO borra bloques con
+     * fuente = 'IA'. Los bloques fuente = 'MANUAL' (cargados por un
+     * humano desde el editor) nunca se tocan aqui, sin importar el filtro:
+     * es el mecanismo que usa "regenerar" para no pisar horarios
+     * confirmados manualmente.
+     */
+    public function eliminarGeneradosPorIa(array $filtros = []): int
+    {
+        $query = Horario::query()->where('fuente', 'IA');
 
         if (! empty($filtros['id_docente'])) {
             $query->where('id_docente', $filtros['id_docente']);

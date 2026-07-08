@@ -6,6 +6,10 @@
     display: flex;
     flex-direction: column;
     gap: 18px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .dir-hero {
@@ -17,6 +21,12 @@
     color: #fff;
     background: linear-gradient(135deg, var(--navy), #1a3a6b);
     border-radius: var(--radius);
+    min-width: 0;
+    overflow: hidden;
+}
+
+.dir-hero > div {
+    min-width: 0;
 }
 
 .dir-hero small {
@@ -33,12 +43,15 @@
     font-size: 22px;
     font-weight: 800;
     font-family: var(--font-display);
+    line-height: 1.15;
+    overflow-wrap: anywhere;
 }
 
 .dir-hero p {
     margin: 0;
     font-size: 13px;
     opacity: .78;
+    line-height: 1.5;
 }
 
 .dir-kpis {
@@ -59,4 +72,66 @@
 
 @media (max-width: 900px) {
     .dir-grid-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 1024px) {
+    .dir-shell {
+        gap: 16px;
+    }
+
+    .dir-hero {
+        padding: 16px 18px;
+    }
+}
+
+@media (max-width: 768px) {
+    .dir-shell {
+        gap: 14px;
+    }
+
+    .dir-hero {
+        gap: 14px;
+        padding: 15px 16px;
+    }
+
+    .dir-hero h2 {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 640px) {
+    .dir-hero {
+        padding: 14px;
+        border-radius: 16px;
+    }
+
+    .dir-hero small {
+        font-size: 10px;
+        margin-bottom: 3px;
+    }
+
+    .dir-hero h2 {
+        font-size: 18px;
+        margin-bottom: 3px;
+    }
+
+    .dir-hero p {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dir-shell {
+        gap: 12px;
+    }
+
+    .dir-hero {
+        gap: 12px;
+        padding: 12px 13px;
+        border-radius: 14px;
+    }
+
+    .dir-hero h2 {
+        font-size: 17px;
+    }
 }

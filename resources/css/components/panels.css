@@ -5,6 +5,10 @@
     box-shadow: var(--shadow);
     border: 1px solid var(--border);
     margin-bottom: 20px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .c-panel-header {
@@ -13,6 +17,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
 }
 
 .c-panel-header h3 {
@@ -21,8 +26,43 @@
     color: var(--navy);
     flex: 1;
     font-family: var(--font-display);
+    min-width: 0;
+    line-height: 1.3;
 }
 
 .c-panel-body {
     padding: 22px;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    .c-panel {
+        margin-bottom: 16px;
+    }
+
+    .c-panel-header {
+        padding: 16px 18px;
+        gap: 9px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .c-panel-body {
+        padding: 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .c-panel {
+        border-radius: 14px;
+        box-shadow: 0 10px 24px rgba(11, 28, 58, .08);
+    }
+
+    .c-panel-header {
+        padding: 14px 14px 12px;
+    }
+
+    .c-panel-body {
+        padding: 14px;
+    }
 }

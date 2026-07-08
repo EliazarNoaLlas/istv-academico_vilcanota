@@ -1,7 +1,25 @@
 @php
     $diasTabla = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 @endphp
-<div class="scheduler-workspace">
+<div class="c-panel dir-iti-empty" id="dir-horarios-estado-vacio" style="display:none;">
+    <i class="bi bi-calendar-x"></i>
+    <h3>Este semestre tiene cursos, pero aún no tiene horario generado.</h3>
+    <p id="dir-horarios-estado-vacio-texto"></p>
+    <button type="button" class="c-btn c-btn-primary" id="dir-horarios-estado-generar">
+        <i class="bi bi-magic"></i> Generar horario del semestre
+    </button>
+</div>
+
+<div class="c-panel dir-iti-empty" id="dir-horarios-estado-sin-docente" style="display:none;">
+    <i class="bi bi-person-x"></i>
+    <h3>No se puede generar porque hay cursos sin docente</h3>
+    <ul id="dir-horarios-estado-sin-docente-lista" class="dir-horarios-cursos-sin-docente"></ul>
+    <a href="{{ route('director.cursos.index') }}" class="c-btn c-btn-primary">
+        <i class="bi bi-person-plus"></i> Ir a asignar docentes
+    </a>
+</div>
+
+<div class="scheduler-workspace" id="dir-horarios-schedule-wrapper">
     <div class="scheduler-board-panel">
         <div class="scheduler-board-head">
             <div class="scheduler-legend">
